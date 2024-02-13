@@ -13,13 +13,15 @@ import { session } from '../../../utils/session';
 import { sinonUtil } from '../../../utils/sinonUtil';
 import commands from '../commands';
 import { formatting } from '../../../utils/formatting';
+import { SpfxDoctorCheck } from './spfx-doctor';
 const command: Command = require('./spfx-doctor');
 
 describe(commands.DOCTOR, () => {
   let log: string[];
-  let sandbox: SinonSandbox;
+  let sandbox: SinonSandbox = sinon.createSandbox();
   let logger: Logger;
   let loggerLogSpy: sinon.SinonSpy;
+  let loggerLogSpyErr: sinon.SinonSpy;
   let commandInfo: CommandInfo;
 
   const packageVersionResponse = (name: string, version: string): string => {
@@ -43,6 +45,7 @@ describe(commands.DOCTOR, () => {
   });
 
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     log = [];
     logger = {
       log: (msg: string) => {
@@ -56,7 +59,11 @@ describe(commands.DOCTOR, () => {
       }
     };
     loggerLogSpy = sinon.spy(logger, 'log');
+    loggerLogSpyErr = sinon.spy(logger, 'logToStderr');
     sinon.stub(process, 'platform').value('linux');
+    (command as any).resultsObject = [];
+    (command as any).output = '';
+    (command as any).logger = null;
   });
 
   afterEach(() => {
@@ -576,10 +583,10 @@ describe(commands.DOCTOR, () => {
     assert(loggerLogSpy.calledWith(getStatus(0, 'Supported in SP2019')));
   });
 
-  it('fails validation if output does not equal text.', async () => {
+  it('fails validation if output does not equal text or json.', async () => {
     const actual = await command.validate({
       options: {
-        output: 'json'
+        output: 'md'
       }
     }, commandInfo);
 
@@ -835,6 +842,28 @@ describe(commands.DOCTOR, () => {
     await command.action(logger, { options: {} });
     assert(loggerLogSpy.calledWith(getStatus(1, 'yo not found')));
     assert(loggerLogSpy.calledWith('- npm i -g yo@3'), 'No fix provided');
+  });
+
+  it('fails yo check when yo not found and logs error object', async () => {
+    const sandbox = sinon.createSandbox();
+    sandbox.stub(process, 'version').value('v10.18.0');
+    sinon.stub(child_process, 'exec').callsFake((file, callback: any) => {
+      const packageName: string = file.split(' ')[2];
+      switch (packageName) {
+        case '@microsoft/sp-core-library':
+          callback(undefined, packageVersionResponse(packageName, '1.10.0'));
+          break;
+        default:
+          callback(new Error(`${file} ENOENT`));
+      }
+      return {} as child_process.ChildProcess;
+    });
+
+    await command.action(logger, { options: { output: 'json' } });
+    const checks: SpfxDoctorCheck[] = loggerLogSpy.lastCall.args[0];
+    assert.strictEqual(checks.filter(y => y.check === 'yo')[0].passed, false);
+    assert(loggerLogSpyErr.calledWith('- npm i -g yo@3'), 'No fix provided');
+    assert(loggerLogSpyErr.calledWith(getStatus(1, 'yo not found')));
   });
 
   it('passes gulp-cli check when gulp-cli found', async () => {
