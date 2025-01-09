@@ -17,9 +17,21 @@ const allScopes = [
   'https://graph.microsoft.com/Sites.Read.All',
   'https://graph.microsoft.com/Directory.AccessAsUser.All',
   'https://graph.microsoft.com/Directory.ReadWrite.All',
+  'https://graph.microsoft.com/ChannelMember.Read.All',
+  'https://graph.microsoft.com/ChannelMessage.Read.All',
+  'https://graph.microsoft.com/ChannelSettings.Read.All',
+  'https://graph.microsoft.com/Chat.Read',
+  'https://graph.microsoft.com/OnlineMeetingArtifact.Read.All',
+  'https://graph.microsoft.com/OnlineMeetings.Read',
+  'https://graph.microsoft.com/OnlineMeetingTranscript.Read.All',
+  'https://graph.microsoft.com/TeamMember.Read.All',
+  'https://graph.microsoft.com/TeamsAppInstallation.ReadForUser',
+  'https://graph.microsoft.com/TeamSettings.ReadWrite.All',
+  'https://graph.microsoft.com/TeamsTab.ReadWrite.All',
   'https://manage.office.com/ActivityFeed.Read',
   'https://manage.office.com/ServiceHealth.Read',
   'https://microsoft.sharepoint-df.com/AllSites.FullControl',
+  'https://microsoft.sharepoint-df.com/TermStore.ReadWrite.All',
   'https://microsoft.sharepoint-df.com/User.ReadWrite.All'
 ];
 
