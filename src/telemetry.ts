@@ -1,4 +1,4 @@
-import child_process from 'child_process';
+import { execFile } from 'child_process';
 import path from 'path';
 import url from 'url';
 import { cli } from './cli/cli.js';
@@ -10,17 +10,17 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 
 function trackTelemetry(object: any): void {
   try {
-    const child = child_process.spawn('node', [path.join(__dirname, 'telemetryRunner.js')], {
-      stdio: ['pipe', 'ignore', 'ignore'],
-      detached: true
+    const child = execFile('node', [path.join(__dirname, 'telemetryRunner.js')], {
+      windowsHide: true
     });
-    child.unref();
 
     object.shell = pid.getProcessName(process.ppid) || '';
     object.session = session.getId(process.ppid);
 
-    child.stdin.write(JSON.stringify(object));
-    child.stdin.end();
+    if (child.stdin) {
+      child.stdin.write(JSON.stringify(object));
+      child.stdin.end();
+    }
   }
   catch { }
 }
