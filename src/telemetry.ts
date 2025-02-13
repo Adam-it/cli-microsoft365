@@ -1,6 +1,7 @@
 import child_process from 'child_process';
 import path from 'path';
 import url from 'url';
+import os from 'os';
 import { cli } from './cli/cli.js';
 import { settingsNames } from './settingsNames.js';
 import { pid } from './utils/pid.js';
@@ -10,11 +11,16 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 
 function trackTelemetry(object: any): void {
   try {
+    const detached = os.platform() !== 'win32' ? true : false;
+
     const child = child_process.spawn('node', [path.join(__dirname, 'telemetryRunner.js')], {
       stdio: ['pipe', 'ignore', 'ignore'],
-      detached: true
+      detached: detached
     });
-    child.unref();
+
+    if (detached) {
+      child.unref();
+    }
 
     object.shell = pid.getProcessName(process.ppid) || '';
     object.session = session.getId(process.ppid);
