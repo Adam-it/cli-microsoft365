@@ -9,8 +9,6 @@ import { validation } from '../../../../utils/validation';
 import { fsUtil } from '../../../../utils/fsUtil';
 import { AzureDevOpsPipeline, AzureDevOpsPipelineStep } from './project-azuredevops-pipeline-model';
 import GlobalOptions from '../../../../GlobalOptions';
-import { parse } from 'semver';
-
 
 interface CommandArgs {
   options: Options;
@@ -159,25 +157,6 @@ class SpfxProjectAzureDevOpsPipelineAddCommand extends BaseProjectCommand {
       pipeline.trigger.branches.include[0] = options.branchName;
     }
 
-    const version = this.getProjectVersion();
-
-    if (!version) {
-      throw `Unable to determine the version of the current SharePoint Framework project`;
-    }
-
-    const minorVersion = parse(version)?.minor;
-
-    if (minorVersion === undefined) {
-      throw `Unable to determine the minor version of the current SharePoint Framework project`;
-    }
-
-    if (minorVersion < 18) {
-      const node = this.getNodeAction(pipeline);
-      if (node.inputs) {
-        node.inputs.versionSpec = '16.x';
-      }
-    }
-
     const script = this.getScriptAction(pipeline);
     if (script.script) {
       if (options.loginMethod === 'user') {
@@ -229,11 +208,6 @@ class SpfxProjectAzureDevOpsPipelineAddCommand extends BaseProjectCommand {
   private getScriptAction(pipeline: AzureDevOpsPipeline): AzureDevOpsPipelineStep {
     const steps = this.getPipelineSteps(pipeline);
     return steps.find(step => step.script)!;
-  }
-
-  private getNodeAction(pipeline: AzureDevOpsPipeline): AzureDevOpsPipelineStep {
-    const steps = this.getPipelineSteps(pipeline);
-    return steps.find(step => step.task && step.task.indexOf('NodeTool') >= 0)!;
   }
 
   private getPipelineSteps(pipeline: AzureDevOpsPipeline): AzureDevOpsPipelineStep[] {
