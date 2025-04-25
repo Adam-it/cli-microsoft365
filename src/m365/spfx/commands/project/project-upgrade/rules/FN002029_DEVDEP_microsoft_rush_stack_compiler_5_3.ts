@@ -1,4 +1,4 @@
-import { DependencyRule } from "./DependencyRule.js";
+import { DependencyRule } from "./DependencyRule";
 
 export class FN002029_DEVDEP_microsoft_rush_stack_compiler_5_3 extends DependencyRule {
   constructor(packageVersion: string) {
