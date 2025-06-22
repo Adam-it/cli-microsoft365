@@ -26,6 +26,7 @@ interface Options extends GlobalOptions {
   preview?: boolean;
   toVersion?: string;
   shell?: string;
+  path?: string;
 }
 
 class SpfxProjectUpgradeCommand extends BaseProjectCommand {
@@ -141,6 +142,9 @@ class SpfxProjectUpgradeCommand extends BaseProjectCommand {
       },
       {
         option: '--preview'
+      },
+      {
+        option: '--path [path]'
       }
     );
 
@@ -172,7 +176,8 @@ class SpfxProjectUpgradeCommand extends BaseProjectCommand {
   }
 
   public async commandAction(logger: Logger, args: CommandArgs): Promise<void> {
-    this.projectRootPath = this.getProjectRoot(process.cwd());
+    const path = args.options.path ? args.options.path : process.cwd();
+    this.projectRootPath = this.getProjectRoot(path);
     if (this.projectRootPath === null) {
       throw new CommandError(`Couldn't find project root folder`, SpfxProjectUpgradeCommand.ERROR_NO_PROJECT_ROOT_FOLDER);
     }
