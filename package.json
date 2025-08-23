@@ -1,7 +1,7 @@
 {
-  "name": "@pnp/cli-microsoft365",
-  "version": "7.1.0",
-  "description": "Manage Microsoft 365 and SharePoint Framework projects on any platform",
+  "name": "@pnp/cli-microsoft365-spfx-toolkit",
+  "version": "1.0.0",
+  "description": "CommonJS version of CLI for Microsoft 365 for SPFx Toolkit",
   "license": "MIT",
   "main": "./dist/api.js",
   "typings": "./dist/api.d.ts",
@@ -16,9 +16,6 @@
     "url": "git+https://github.com/pnp/cli-microsoft365.git"
   },
   "homepage": "https://pnp.github.io/cli-microsoft365/",
-  "bugs": {
-    "url": "https://github.com/pnp/cli-microsoft365/issues"
-  },
   "scripts": {
     "build": "tsc -p . && node scripts/copy-files.js",
     "watch": "tsc -w -p .",
@@ -49,49 +46,9 @@
   "author": "https://github.com/pnp/cli-microsoft365/graphs/contributors",
   "maintainers": [
     {
-      "name": "Waldek Mastykarz",
-      "email": "waldek@mastykarz.nl",
-      "web": "https://blog.mastykarz.nl"
-    },
-    {
-      "name": "Garry Trinder",
-      "email": "garry.trinder@live.com",
-      "web": "https://garrytrinder.github.io/"
-    },
-    {
-      "name": "Albert-Jan Schot",
-      "email": "appie@digiwijs.nl",
-      "web": "https://www.cloudappie.nl/"
-    },
-    {
-      "name": "Patrick Lamber",
-      "email": "patrick@nubo.eu",
-      "web": "https://www.nubo.eu/"
-    },
-    {
-      "name": "Arjun Menon",
-      "email": "arjun.umenon@gmail.com",
-      "web": "https://arjunumenon.com/"
-    },
-    {
       "name": "Adam Wojcik",
       "email": "adam.wojcik.it@gmail.com",
       "web": "https://github.com/Adam-it/"
-    },
-    {
-      "name": "Martin Lingstuyl",
-      "email": "mlingstuyl@live.com",
-      "web": "https://www.blimped.nl/"
-    },
-    {
-      "name": "Jasey Waegebaert",
-      "email": "jaseyw@gmigroup.be",
-      "web": "https://github.com/Jwaegebaert"
-    },
-    {
-      "name": "Milan Holemans",
-      "email": "Milan.Holemans@vanroey.be",
-      "web": "https://github.com/milanholemans"
     }
   ],
   "contributors": [

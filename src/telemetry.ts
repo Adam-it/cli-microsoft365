@@ -4,7 +4,7 @@ import { settingsNames } from "./settingsNames";
 
 class Telemetry {
   public trackEvent(commandName: string, properties: any): void {
-    if (Cli.getInstance().getSettingWithDefaultValue<boolean>(settingsNames.disableTelemetry, false)) {
+    if (Cli.getInstance().getSettingWithDefaultValue<boolean>(settingsNames.disableTelemetry, true)) {
       return;
     }
 
@@ -16,7 +16,7 @@ class Telemetry {
   }
 
   public trackException(exception: any): void {
-    if (Cli.getInstance().getSettingWithDefaultValue<boolean>(settingsNames.disableTelemetry, false)) {
+    if (Cli.getInstance().getSettingWithDefaultValue<boolean>(settingsNames.disableTelemetry, true)) {
       return;
     }
 
