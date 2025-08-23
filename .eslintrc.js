@@ -132,7 +132,6 @@ module.exports = {
   },
   "plugins": [
     "@typescript-eslint",
-    "cli-microsoft365",
     "mocha"
   ],
   "ignorePatterns": [
@@ -142,8 +141,6 @@ module.exports = {
     "*.js"
   ],
   "rules": {
-    "cli-microsoft365/correct-command-class-name": ["error", sortedDictionary, capitalized],
-    "cli-microsoft365/correct-command-name": "error",
     "indent": "off",
     "@typescript-eslint/indent": [
       "error",
@@ -228,8 +225,6 @@ module.exports = {
       "rules": {
         "no-console": "error",
         "@typescript-eslint/no-empty-function": "off",
-        "cli-microsoft365/correct-command-class-name": "off",
-        "cli-microsoft365/correct-command-name": "off",
         "@typescript-eslint/explicit-function-return-type": "off"
       }
     },

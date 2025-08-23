@@ -226,7 +226,6 @@
     "@typescript-eslint/parser": "^5.62.0",
     "c8": "^7.14.0",
     "eslint": "^8.46.0",
-    "eslint-plugin-cli-microsoft365": "file:eslint-rules",
     "eslint-plugin-mocha": "^10.1.0",
     "mocha": "^10.2.0",
     "rimraf": "^3.0.2",

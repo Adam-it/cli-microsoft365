@@ -61,7 +61,6 @@
         "@typescript-eslint/parser": "^5.62.0",
         "c8": "^7.14.0",
         "eslint": "^8.46.0",
-        "eslint-plugin-cli-microsoft365": "file:eslint-rules",
         "eslint-plugin-mocha": "^10.1.0",
         "mocha": "^10.2.0",
         "rimraf": "^3.0.2",
@@ -72,7 +71,7 @@
     "eslint-rules": {
       "name": "eslint-plugin-cli-microsoft365",
       "version": "1.0.0",
-      "dev": true
+      "extraneous": true
     },
     "node_modules/@aashutoshrathi/word-wrap": {
       "version": "1.2.6",
@@ -2005,10 +2004,6 @@
       "funding": {
         "url": "https://opencollective.com/eslint"
       }
-    },
-    "node_modules/eslint-plugin-cli-microsoft365": {
-      "resolved": "eslint-rules",
-      "link": true
     },
     "node_modules/eslint-plugin-mocha": {
       "version": "10.1.0",
