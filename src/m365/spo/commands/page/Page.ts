@@ -19,7 +19,7 @@ export class Page {
     const pageName: string = this.getPageNameWithExtension(name);
 
     const requestOptions: CliRequestOptions = {
-      url: `${webUrl}/_api/web/getfilebyserverrelativeurl('${urlUtil.getServerRelativeSiteUrl(webUrl)}/SitePages/${formatting.encodeQueryParameter(pageName)}')?$expand=ListItemAllFields/ClientSideApplicationId`,
+      url: `${webUrl}/_api/web/GetFileByServerRelativePath(DecodedUrl='${urlUtil.getServerRelativeSiteUrl(webUrl)}/SitePages/${formatting.encodeQueryParameter(pageName)}')?$expand=ListItemAllFields/ClientSideApplicationId`,
       headers: {
         'content-type': 'application/json;charset=utf-8',
         accept: 'application/json;odata=nometadata'
@@ -35,7 +35,7 @@ export class Page {
     return ClientSidePage.fromHtml(res.ListItemAllFields.CanvasContent1);
   }
 
-  public static async checkout(name: string, webUrl: string, logger: Logger, debug: boolean, verbose: boolean): Promise<ClientSidePageProperties> {
+  public static async checkout(name: string, webUrl: string, logger: Logger, verbose: boolean): Promise<ClientSidePageProperties> {
     if (verbose) {
       logger.log(`Checking out ${name} page...`);
     }
@@ -95,10 +95,30 @@ export class Page {
   }
 
   public static getSectionInformation(section: CanvasSection, isJSONOutput: boolean): any {
-    return {
-      order: section.order,
-      columns: section.columns.map(column => this.getColumnsInformation(column, isJSONOutput))
+    const sectionOutput: any = {
+      order: section.order
     };
+
+    sectionOutput.columns = section.columns.map(column => this.getColumnsInformation(column, isJSONOutput));
+
+    return sectionOutput;
+  }
+
+  /**
+   * Publish a modern page in SharePoint Online
+   * @param webUrl Absolute URL of the SharePoint site where the page is located
+   * @param pageName List relative url of the page to publish
+   */
+  public static async publishPage(webUrl: string, pageName: string): Promise<void> {
+    const filePath = `${urlUtil.getServerRelativeSiteUrl(webUrl)}/SitePages/${pageName}`;
+    const requestOptions: CliRequestOptions = {
+      url: `${webUrl}/_api/web/GetFileByServerRelativePath(DecodedUrl='${formatting.encodeQueryParameter(filePath)}')/Publish()`,
+      headers: {
+        accept: 'application/json;odata=nometadata'
+      }
+    };
+
+    await request.post(requestOptions);
   }
 
   private static getPageNameWithExtension(name: string): string {

@@ -18,6 +18,8 @@ import { aadGroup } from './aadGroup';
 import { SharingCapabilities } from '../m365/spo/commands/site/SharingCapabilities';
 import { WebProperties } from '../m365/spo/commands/web/WebProperties';
 import { Site } from '@microsoft/microsoft-graph-types';
+import { FileProperties } from '../m365/spo/commands/file/FileProperties';
+import { ListItemInstance } from '../m365/spo/commands/listitem/ListItemInstance';
 
 export interface ContextInfo {
   FormDigestTimeoutSeconds: number;
@@ -1527,5 +1529,175 @@ export const spo = {
     const webProperties: WebProperties = await request.get<WebProperties>(requestOptions);
 
     return webProperties;
+  },
+
+  /**
+  * Gets a file as list item by url
+  * @param absoluteListUrl The absolute url to the list
+  * @param url The url of the file
+  * @param logger The logger object
+  * @param verbose If in verbose mode
+  * @returns The list item object
+  */
+  async getFileAsListItemByUrl(absoluteListUrl: string, url: string, logger?: Logger, verbose?: boolean): Promise<any> {
+    if (verbose && logger) {
+      await logger.logToStderr(`Getting the file properties with url ${url}`);
+    }
+
+    const serverRelativePath = urlUtil.getServerRelativePath(absoluteListUrl, url);
+    const requestUrl = `${absoluteListUrl}/_api/web/GetFileByServerRelativePath(DecodedUrl=@f)?$expand=ListItemAllFields&@f='${formatting.encodeQueryParameter(serverRelativePath)}'`;
+
+    const requestOptions: CliRequestOptions = {
+      url: requestUrl,
+      headers: {
+        'accept': 'application/json;odata=nometadata'
+      },
+      responseType: 'json'
+    };
+
+    const file = await request.get<FileProperties>(requestOptions);
+
+    return file.ListItemAllFields;
+  },
+
+  /**
+  * Updates a list item with system update
+  * @param absoluteListUrl The absolute base URL without query parameters, pointing to the specific list where the item resides. This URL should represent the list.
+  * @param itemId The id of the list item
+  * @param properties An object of the properties that should be updated
+  * @param contentTypeName The name of the content type to update
+  * @param logger The logger object
+  * @param verbose If in verbose mode
+  * @returns The updated list item object
+  */
+  async systemUpdateListItem(absoluteListUrl: string, itemId: string, logger: Logger, verbose: boolean, properties?: object, contentTypeName?: string): Promise<ListItemInstance> {
+    if (!properties && !contentTypeName) {
+      // Neither properties nor contentTypeName provided, no need to proceed
+      throw 'Either properties or contentTypeName must be provided for systemUpdateListItem.';
+    }
+
+    const parsedUrl = new URL(absoluteListUrl);
+    const serverRelativeSiteMatch = absoluteListUrl.match(new RegExp('/sites/[^/]+'));
+    const webUrl = `${parsedUrl.protocol}//${parsedUrl.host}${serverRelativeSiteMatch ?? ''}`;
+
+    if (verbose && logger) {
+      await logger.logToStderr(`Getting list id...`);
+    }
+
+    const listRequestOptions: CliRequestOptions = {
+      url: `${absoluteListUrl}?$select=Id`,
+      headers: {
+        'accept': 'application/json;odata=nometadata'
+      },
+      responseType: 'json'
+    };
+
+    const list = await request.get<{ Id: string; }>(listRequestOptions);
+
+    const listId = list.Id;
+
+    if (verbose && logger) {
+      await logger.logToStderr(`Getting request digest for systemUpdate request`);
+    }
+
+    const res = await spo.getRequestDigest(webUrl);
+
+    const formDigestValue = res.FormDigestValue;
+    const objectIdentity: string = await spo.requestObjectIdentity(webUrl, logger, verbose);
+
+    let index = 0;
+
+    const requestBodyOptions: string[] = properties ? Object.keys(properties).map(key => `
+    <Method Name="ParseAndSetFieldValue" Id="${++index}" ObjectPathId="147">
+      <Parameters>
+        <Parameter Type="String">${key}</Parameter>
+        <Parameter Type="String">${(<any>properties)[key].toString()}</Parameter>
+      </Parameters>
+    </Method>`) : [];
+
+    const additionalContentType: string = contentTypeName ? `
+    <Method Name="ParseAndSetFieldValue" Id="${++index}" ObjectPathId="147">
+      <Parameters>
+        <Parameter Type="String">ContentType</Parameter>
+        <Parameter Type="String">${contentTypeName}</Parameter>
+      </Parameters>
+    </Method>` : '';
+
+    const requestBody: string = `<Request AddExpandoFieldTypeSuffix="true" SchemaVersion="15.0.0.0" LibraryVersion="16.0.0.0" ApplicationName="${config.applicationName}" xmlns="http://schemas.microsoft.com/sharepoint/clientquery/2009">
+      <Actions>
+        ${requestBodyOptions.join('')}${additionalContentType}
+        <Method Name="SystemUpdate" Id="${++index}" ObjectPathId="147" />
+      </Actions>
+      <ObjectPaths>
+        <Identity Id="147" Name="${objectIdentity}:list:${listId}:item:${itemId},1" />
+      </ObjectPaths>
+    </Request>`;
+
+    const requestOptions: CliRequestOptions = {
+      url: `${webUrl}/_vti_bin/client.svc/ProcessQuery`,
+      headers: {
+        'Content-Type': 'text/xml',
+        'X-RequestDigest': formDigestValue
+      },
+      data: requestBody
+    };
+
+    const response: string = await request.post(requestOptions);
+
+    if (response.indexOf("ErrorMessage") > -1) {
+      throw `Error occurred in systemUpdate operation - ${response}`;
+    }
+
+    const id = Number(itemId);
+
+    const requestOptionsItems: CliRequestOptions = {
+      url: `${absoluteListUrl}/items(${id})`,
+      headers: {
+        'accept': 'application/json;odata=nometadata'
+      },
+      responseType: 'json'
+    };
+
+    const itemsResponse = await request.get<ListItemInstance>(requestOptionsItems);
+    return (itemsResponse);
+  },
+
+  /**
+   * Retrieves the ObjectIdentity from a SharePoint site
+   * @param webUrl web url
+   * @param logger The logger object
+   * @param verbose If in verbose mode
+   * @return The ObjectIdentity as string
+   */
+  async requestObjectIdentity(webUrl: string, logger: Logger, verbose: boolean): Promise<string> {
+    const res = await spo.getRequestDigest(webUrl);
+    const formDigestValue = res.FormDigestValue;
+
+    const requestOptions: CliRequestOptions = {
+      url: `${webUrl}/_vti_bin/client.svc/ProcessQuery`,
+      headers: {
+        'X-RequestDigest': formDigestValue
+      },
+      data: `<Request AddExpandoFieldTypeSuffix="true" SchemaVersion="15.0.0.0" LibraryVersion="16.0.0.0" ApplicationName="${config.applicationName}" xmlns="http://schemas.microsoft.com/sharepoint/clientquery/2009"><Actions><Query Id="1" ObjectPathId="5"><Query SelectAllProperties="false"><Properties><Property Name="ServerRelativeUrl" ScalarProperty="true" /></Properties></Query></Query></Actions><ObjectPaths><Property Id="5" ParentId="3" Name="Web" /><StaticProperty Id="3" TypeId="{3747adcd-a3c3-41b9-bfab-4a64dd2f1e0a}" Name="Current" /></ObjectPaths></Request>`
+    };
+
+    const response = await request.post<string>(requestOptions);
+    if (verbose) {
+      await logger.logToStderr('Attempt to get _ObjectIdentity_ key values');
+    }
+
+    const json: ClientSvcResponse = JSON.parse(response);
+
+    const contents: ClientSvcResponseContents = json.find(x => { return x.ErrorInfo; });
+    if (contents && contents.ErrorInfo) {
+      throw contents.ErrorInfo.ErrorMessage || 'ClientSvc unknown error';
+    }
+
+    const identityObject = json.find(x => { return x._ObjectIdentity_; });
+    if (identityObject) {
+      return identityObject._ObjectIdentity_;
+    }
+
+    throw 'Cannot proceed. _ObjectIdentity_ not found'; // this is not supposed to happen
   }
 };
