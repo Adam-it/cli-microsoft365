@@ -72,11 +72,6 @@
         "source-map-support": "^0.5.21"
       }
     },
-    "eslint-rules": {
-      "name": "eslint-plugin-cli-microsoft365",
-      "version": "1.0.0",
-      "extraneous": true
-    },
     "node_modules/@aashutoshrathi/word-wrap": {
       "version": "1.2.6",
       "resolved": "https://registry.npmjs.org/@aashutoshrathi/word-wrap/-/word-wrap-1.2.6.tgz",
