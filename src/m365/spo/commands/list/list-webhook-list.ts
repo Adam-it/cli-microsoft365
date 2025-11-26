@@ -1,9 +1,11 @@
+import { z } from 'zod';
 import { Logger } from '../../../../cli/Logger.js';
-import GlobalOptions from '../../../../GlobalOptions.js';
+import { globalOptionsZod } from '../../../../Command.js';
 import { formatting } from '../../../../utils/formatting.js';
 import { odata } from '../../../../utils/odata.js';
 import { urlUtil } from '../../../../utils/urlUtil.js';
 import { validation } from '../../../../utils/validation.js';
+import { zod } from '../../../../utils/zod.js';
 import SpoCommand from '../../../base/SpoCommand.js';
 import commands from '../../commands.js';
 
@@ -11,12 +13,22 @@ interface CommandArgs {
   options: Options;
 }
 
-interface Options extends GlobalOptions {
-  webUrl: string;
-  listTitle?: string;
-  listId?: string;
-  listUrl?: string;
-}
+const baseOptions = globalOptionsZod
+  .extend({
+    webUrl: zod.alias('u', z.string().refine(url => validation.isValidSharePointUrl(url) === true, url => ({
+      message: `'${url}' is not a valid SharePoint Online site URL.`
+    }))),
+    listId: zod.alias('i', z.string().optional().refine(id => id === undefined || validation.isValidGuid(id), id => ({
+      message: `'${id}' is not a valid GUID.`
+    }))),
+    listTitle: zod.alias('t', z.string().optional()),
+    listUrl: z.string().optional()
+  })
+  .strict();
+
+const options = baseOptions;
+
+type Options = z.infer<typeof options>;
 
 class SpoListWebhookListCommand extends SpoCommand {
   public get name(): string {
@@ -32,63 +44,16 @@ class SpoListWebhookListCommand extends SpoCommand {
     return ['id', 'clientState', 'expirationDateTime', 'resource'];
   }
 
-  constructor() {
-    super();
-
-    this.#initTelemetry();
-    this.#initOptions();
-    this.#initValidators();
-    this.#initOptionSets();
+  public get schema(): z.ZodTypeAny | undefined {
+    return options;
   }
 
-  #initTelemetry(): void {
-    this.telemetry.push((args: CommandArgs) => {
-      Object.assign(this.telemetryProperties, {
-        listId: typeof args.options.listId !== 'undefined',
-        listTitle: typeof args.options.listTitle !== 'undefined',
-        listUrl: typeof args.options.listUrl !== 'undefined'
+  public getRefinedSchema(schema: typeof options): z.ZodEffects<any> | undefined {
+    return schema
+      .refine(opts => [opts.listId, opts.listTitle, opts.listUrl].filter(option => option !== undefined).length === 1, {
+        message: 'Specify exactly one of listId, listTitle or listUrl.',
+        path: ['listId']
       });
-    });
-  }
-
-  #initOptions(): void {
-    this.options.unshift(
-      {
-        option: '-u, --webUrl <webUrl>'
-      },
-      {
-        option: '-i, --listId [listId]'
-      },
-      {
-        option: '-t, --listTitle [listTitle]'
-      },
-      {
-        option: '--listUrl [listUrl]'
-      },
-    );
-  }
-
-  #initValidators(): void {
-    this.validators.push(
-      async (args: CommandArgs) => {
-        const isValidSharePointUrl: boolean | string = validation.isValidSharePointUrl(args.options.webUrl);
-        if (isValidSharePointUrl !== true) {
-          return isValidSharePointUrl;
-        }
-
-        if (args.options.listId) {
-          if (!validation.isValidGuid(args.options.listId)) {
-            return `${args.options.listId} is not a valid GUID`;
-          }
-        }
-
-        return true;
-      }
-    );
-  }
-
-  #initOptionSets(): void {
-    this.optionSets.push({ options: ['listId', 'listTitle', 'listUrl'] });
   }
 
   public async commandAction(logger: Logger, args: CommandArgs): Promise<void> {
@@ -96,33 +61,37 @@ class SpoListWebhookListCommand extends SpoCommand {
       await logger.logToStderr(`Retrieving webhook information for list ${args.options.listTitle || args.options.listId || args.options.listUrl} in site at ${args.options.webUrl}...`);
     }
 
-    let requestUrl: string = `${args.options.webUrl}/_api/web`;
-
-    if (args.options.listId) {
-      requestUrl += `/lists(guid'${formatting.encodeQueryParameter(args.options.listId)}')/Subscriptions`;
-    }
-    else if (args.options.listTitle) {
-      requestUrl += `/lists/GetByTitle('${formatting.encodeQueryParameter(args.options.listTitle)}')/Subscriptions`;
-    }
-    else if (args.options.listUrl) {
-      const listServerRelativeUrl: string = urlUtil.getServerRelativePath(args.options.webUrl, args.options.listUrl);
-      requestUrl += `/GetList('${formatting.encodeQueryParameter(listServerRelativeUrl)}')/Subscriptions`;
-    }
+    const requestUrl: string = this.getRequestUrl(args.options);
 
     try {
-      const res = await odata.getAllItems<{ id: string, clientState: string, expirationDateTime: Date, resource: string }>(requestUrl);
+      const webhooks = await odata.getAllItems<{ id: string; clientState?: string; expirationDateTime: Date; resource: string }>(requestUrl);
 
-      if (res && res.length > 0) {
-        res.forEach(w => {
-          w.clientState = w.clientState || '';
-        });
-      }
+      webhooks.forEach(webhook => {
+        webhook.clientState = webhook.clientState ?? '';
+      });
 
-      await logger.log(res);
+      await logger.log(webhooks);
     }
     catch (err: any) {
       this.handleRejectedODataJsonPromise(err);
     }
+  }
+
+  private getRequestUrl(options: Options): string {
+    let requestUrl = `${options.webUrl}/_api/web`;
+
+    if (options.listId) {
+      requestUrl += `/lists(guid'${formatting.encodeQueryParameter(options.listId)}')/Subscriptions`;
+    }
+    else if (options.listTitle) {
+      requestUrl += `/lists/GetByTitle('${formatting.encodeQueryParameter(options.listTitle)}')/Subscriptions`;
+    }
+    else if (options.listUrl) {
+      const listServerRelativeUrl: string = urlUtil.getServerRelativePath(options.webUrl, options.listUrl);
+      requestUrl += `/GetList('${formatting.encodeQueryParameter(listServerRelativeUrl)}')/Subscriptions`;
+    }
+
+    return requestUrl;
   }
 }
 

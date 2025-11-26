@@ -1,10 +1,12 @@
+import { z } from 'zod';
 import { cli } from '../../../../cli/cli.js';
 import { Logger } from '../../../../cli/Logger.js';
-import GlobalOptions from '../../../../GlobalOptions.js';
+import { globalOptionsZod } from '../../../../Command.js';
 import request, { CliRequestOptions } from '../../../../request.js';
 import { formatting } from '../../../../utils/formatting.js';
 import { urlUtil } from '../../../../utils/urlUtil.js';
 import { validation } from '../../../../utils/validation.js';
+import { zod } from '../../../../utils/zod.js';
 import SpoCommand from '../../../base/SpoCommand.js';
 import commands from '../../commands.js';
 
@@ -12,14 +14,26 @@ interface CommandArgs {
   options: Options;
 }
 
-interface Options extends GlobalOptions {
-  webUrl: string;
-  listId?: string;
-  listTitle?: string;
-  listUrl?: string;
-  id: string;
-  force?: boolean;
-}
+const baseOptions = globalOptionsZod
+  .extend({
+    webUrl: zod.alias('u', z.string().refine(url => validation.isValidSharePointUrl(url) === true, url => ({
+      message: `'${url}' is not a valid SharePoint Online site URL.`
+    }))),
+    listId: zod.alias('l', z.string().optional().refine(id => id === undefined || validation.isValidGuid(id), id => ({
+      message: `'${id}' is not a valid GUID.`
+    }))),
+    listTitle: zod.alias('t', z.string().optional()),
+    listUrl: z.string().optional(),
+    id: zod.alias('i', z.string().refine(id => validation.isValidGuid(id), id => ({
+      message: `'${id}' is not a valid GUID.`
+    }))),
+    force: zod.alias('f', z.boolean().optional())
+  })
+  .strict();
+
+const options = baseOptions;
+
+type Options = z.infer<typeof options>;
 
 class SpoListWebhookRemoveCommand extends SpoCommand {
   public get name(): string {
@@ -30,96 +44,26 @@ class SpoListWebhookRemoveCommand extends SpoCommand {
     return 'Removes the specified webhook from the list';
   }
 
-  constructor() {
-    super();
-
-    this.#initTelemetry();
-    this.#initOptions();
-    this.#initValidators();
-    this.#initOptionSets();
+  public get schema(): z.ZodTypeAny | undefined {
+    return options;
   }
 
-  #initTelemetry(): void {
-    this.telemetry.push((args: CommandArgs) => {
-      Object.assign(this.telemetryProperties, {
-        listId: typeof args.options.listId !== 'undefined',
-        listTitle: typeof args.options.listTitle !== 'undefined',
-        listUrl: typeof args.options.listUrl !== 'undefined',
-        id: typeof args.options.id !== 'undefined',
-        force: !!args.options.force
+  public getRefinedSchema(schema: typeof options): z.ZodEffects<any> | undefined {
+    return schema
+      .refine(opts => [opts.listId, opts.listTitle, opts.listUrl].filter(option => option !== undefined).length === 1, {
+        message: 'Specify exactly one of listId, listTitle or listUrl.',
+        path: ['listId']
       });
-    });
-  }
-
-  #initOptions(): void {
-    this.options.unshift(
-      {
-        option: '-u, --webUrl <webUrl>'
-      },
-      {
-        option: '-l, --listId [listId]'
-      },
-      {
-        option: '-t, --listTitle [listTitle]'
-      },
-      {
-        option: '--listUrl [listUrl]'
-      },
-      {
-        option: '-i, --id <id>'
-      },
-      {
-        option: '-f, --force'
-      }
-    );
-  }
-
-  #initValidators(): void {
-    this.validators.push(
-      async (args: CommandArgs) => {
-        if (!validation.isValidGuid(args.options.id)) {
-          return `${args.options.id} is not a valid GUID`;
-        }
-
-        const isValidSharePointUrl: boolean | string = validation.isValidSharePointUrl(args.options.webUrl);
-        if (isValidSharePointUrl !== true) {
-          return isValidSharePointUrl;
-        }
-
-        if (args.options.listId) {
-          if (!validation.isValidGuid(args.options.listId)) {
-            return `${args.options.listId} is not a valid GUID`;
-          }
-        }
-
-        return true;
-      }
-    );
-  }
-
-  #initOptionSets(): void {
-    this.optionSets.push({ options: ['listId', 'listTitle', 'listUrl'] });
   }
 
   public async commandAction(logger: Logger, args: CommandArgs): Promise<void> {
+    const listIdentifier = args.options.listId ?? args.options.listTitle ?? args.options.listUrl;
     const removeWebhook = async (): Promise<void> => {
       if (this.verbose) {
-        const list: string = (args.options.listId || args.options.listId || args.options.listUrl) as string;
-        await logger.logToStderr(`Webhook ${args.options.id} is about to be removed from list ${list} located at site ${args.options.webUrl}...`);
+        await logger.logToStderr(`Webhook ${args.options.id} is about to be removed from list ${listIdentifier} located at site ${args.options.webUrl}...`);
       }
 
-      let requestUrl: string = `${args.options.webUrl}/_api/web`;
-
-      if (args.options.listId) {
-        requestUrl += `/lists(guid'${formatting.encodeQueryParameter(args.options.listId)}')/Subscriptions('${formatting.encodeQueryParameter(args.options.id)}')`;
-      }
-      else if (args.options.listTitle) {
-        requestUrl += `/lists/GetByTitle('${formatting.encodeQueryParameter(args.options.listTitle as string)}')/Subscriptions('${formatting.encodeQueryParameter(args.options.id)}')`;
-      }
-      else if (args.options.listUrl) {
-        const listServerRelativeUrl: string = urlUtil.getServerRelativePath(args.options.webUrl, args.options.listUrl);
-        requestUrl += `/GetList('${formatting.encodeQueryParameter(listServerRelativeUrl)}')/Subscriptions('${formatting.encodeQueryParameter(args.options.id)}')`;
-      }
+      const requestUrl = this.getRequestUrl(args.options);
 
       const requestOptions: CliRequestOptions = {
         url: requestUrl,
@@ -143,12 +87,29 @@ class SpoListWebhookRemoveCommand extends SpoCommand {
       await removeWebhook();
     }
     else {
-      const result = await cli.promptForConfirmation({ message: `Are you sure you want to remove webhook ${args.options.id} from list ${args.options.listTitle || args.options.listId || args.options.listUrl} located at site ${args.options.webUrl}?` });
+      const result = await cli.promptForConfirmation({ message: `Are you sure you want to remove webhook ${args.options.id} from list ${listIdentifier} located at site ${args.options.webUrl}?` });
 
       if (result) {
         await removeWebhook();
       }
     }
+  }
+
+  private getRequestUrl(options: Options): string {
+    let requestUrl = `${options.webUrl}/_api/web`;
+
+    if (options.listId) {
+      requestUrl += `/lists(guid'${formatting.encodeQueryParameter(options.listId)}')/Subscriptions('${formatting.encodeQueryParameter(options.id)}')`;
+    }
+    else if (options.listTitle) {
+      requestUrl += `/lists/GetByTitle('${formatting.encodeQueryParameter(options.listTitle)}')/Subscriptions('${formatting.encodeQueryParameter(options.id)}')`;
+    }
+    else if (options.listUrl) {
+      const listServerRelativeUrl = urlUtil.getServerRelativePath(options.webUrl, options.listUrl);
+      requestUrl += `/GetList('${formatting.encodeQueryParameter(listServerRelativeUrl)}')/Subscriptions('${formatting.encodeQueryParameter(options.id)}')`;
+    }
+
+    return requestUrl;
   }
 }
 

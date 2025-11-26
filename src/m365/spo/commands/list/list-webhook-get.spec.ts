@@ -1,8 +1,7 @@
 import assert from 'assert';
 import sinon from 'sinon';
+import { z } from 'zod';
 import auth from '../../../../Auth.js';
-import { cli } from '../../../../cli/cli.js';
-import { CommandInfo } from '../../../../cli/CommandInfo.js';
 import { Logger } from '../../../../cli/Logger.js';
 import { CommandError } from '../../../../Command.js';
 import request from '../../../../request.js';
@@ -13,7 +12,6 @@ import { session } from '../../../../utils/session.js';
 import { sinonUtil } from '../../../../utils/sinonUtil.js';
 import commands from '../../commands.js';
 import command from './list-webhook-get.js';
-import { settingsNames } from '../../../../settingsNames.js';
 
 describe(commands.LIST_WEBHOOK_GET, () => {
   const webhookGetResponse = {
@@ -24,10 +22,13 @@ describe(commands.LIST_WEBHOOK_GET, () => {
     "resource": "dfddade1-4729-428d-881e-7fedf3cae50d",
     "resourceData": null
   };
+  const webUrl = 'https://contoso.sharepoint.com';
+  const listId = '0CD891EF-AFCE-4E55-B836-FCE03286CCCF';
+  const webhookId = 'cc27a922-8224-4296-90a5-ebbc54da2e85';
   let log: any[];
   let logger: Logger;
   let loggerLogSpy: sinon.SinonSpy;
-  let commandInfo: CommandInfo;
+  let schema: z.ZodTypeAny;
 
   before(() => {
     sinon.stub(auth, 'restoreAuth').resolves();
@@ -35,7 +36,7 @@ describe(commands.LIST_WEBHOOK_GET, () => {
     sinon.stub(pid, 'getProcessName').returns('');
     sinon.stub(session, 'getId').returns('');
     auth.connection.active = true;
-    commandInfo = cli.getCommandInfo(command);
+    schema = command.getSchemaToParse()!;
   });
 
   beforeEach(() => {
@@ -56,8 +57,7 @@ describe(commands.LIST_WEBHOOK_GET, () => {
 
   afterEach(() => {
     sinonUtil.restore([
-      request.get,
-      cli.getSettingWithDefaultValue
+      request.get
     ]);
   });
 
@@ -251,54 +251,38 @@ describe(commands.LIST_WEBHOOK_GET, () => {
     });
   });
 
-  it('fails validation if webhook id option is not passed', async () => {
-    sinon.stub(cli, 'getSettingWithDefaultValue').callsFake((settingName, defaultValue) => {
-      if (settingName === settingsNames.prompt) {
-        return false;
-      }
-
-      return defaultValue;
-    });
-
-    const actual = await command.validate({ options: { webUrl: 'https://contoso.sharepoint.com', listId: '0CD891EF-AFCE-4E55-B836-FCE03286CCCF' } }, commandInfo);
-    assert.notStrictEqual(actual, true);
+  it('passes validation when listId is provided', () => {
+    const result = schema.safeParse({ webUrl, listId, id: webhookId });
+    assert.strictEqual(result.success, true);
   });
 
-  it('fails validation if the url option is not a valid SharePoint site URL', async () => {
-    const actual = await command.validate({ options: { webUrl: 'foo', id: 'cc27a922-8224-4296-90a5-ebbc54da2e85', listTitle: 'Documents' } }, commandInfo);
-    assert.notStrictEqual(actual, true);
+  it('passes validation when listTitle is provided', () => {
+    const result = schema.safeParse({ webUrl, listTitle: 'Documents', id: webhookId });
+    assert.strictEqual(result.success, true);
   });
 
-  it('passes validation if the url option is a valid SharePoint site URL', async () => {
-    const actual = await command.validate({ options: { webUrl: 'https://contoso.sharepoint.com', listId: '0CD891EF-AFCE-4E55-B836-FCE03286CCCF', id: 'cc27a922-8224-4296-90a5-ebbc54da2e85' } }, commandInfo);
-    assert(actual);
+  it('passes validation when listUrl is provided', () => {
+    const result = schema.safeParse({ webUrl, listUrl: '/sites/site/lists/lib', id: webhookId });
+    assert.strictEqual(result.success, true);
   });
 
-  it('fails validation if the id option is not a valid GUID', async () => {
-    const actual = await command.validate({ options: { webUrl: 'https://contoso.sharepoint.com', listId: '12345', id: 'cc27a922-8224-4296-90a5-ebbc54da2e85' } }, commandInfo);
-    assert.notStrictEqual(actual, true);
+  it('fails validation when list identifier is missing', () => {
+    const result = schema.safeParse({ webUrl, id: webhookId });
+    assert(result.success === false && result.error.issues.some(issue => issue.message.includes('Specify exactly one of listId, listTitle or listUrl.')));
   });
 
-  it('fails validation if the listid option is not a valid GUID', async () => {
-    const actual = await command.validate({ options: { webUrl: 'https://contoso.sharepoint.com', listId: '0CD891EF-AFCE-4E55-B836-FCE03286CCCF', id: '12345' } }, commandInfo);
-    assert.notStrictEqual(actual, true);
+  it('fails validation when listId is not a GUID', () => {
+    const result = schema.safeParse({ webUrl, listId: 'abc', id: webhookId });
+    assert(result.success === false && result.error.issues.some(issue => issue.message.includes('not a valid GUID')));
   });
 
-  it('passes validation if the id option is a valid GUID', async () => {
-    sinon.stub(cli, 'getSettingWithDefaultValue').callsFake((settingName, defaultValue) => {
-      if (settingName === settingsNames.prompt) {
-        return false;
-      }
-
-      return defaultValue;
-    });
-
-    const actual = await command.validate({ options: { webUrl: 'https://contoso.sharepoint.com', id: '0CD891EF-AFCE-4E55-B836-FCE03286CCCF' } }, commandInfo);
-    assert(actual);
+  it('fails validation when id is not a GUID', () => {
+    const result = schema.safeParse({ webUrl, listId, id: 'abc' });
+    assert(result.success === false && result.error.issues.some(issue => issue.message.includes('not a valid GUID')));
   });
 
-  it('passes validation if the listid option is a valid GUID', async () => {
-    const actual = await command.validate({ options: { webUrl: 'https://contoso.sharepoint.com', listId: '0CD891EF-AFCE-4E55-B836-FCE03286CCCF', id: 'cc27a922-8224-4296-90a5-ebbc54da2e85' } }, commandInfo);
-    assert(actual);
+  it('fails validation when webUrl is not a SharePoint URL', () => {
+    const result = schema.safeParse({ webUrl: 'foo', listId, id: webhookId });
+    assert(result.success === false && result.error.issues.some(issue => issue.message.includes('SharePoint Online site URL')));
   });
 });

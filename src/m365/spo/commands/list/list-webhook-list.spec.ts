@@ -1,8 +1,7 @@
 import assert from 'assert';
 import sinon from 'sinon';
+import { z } from 'zod';
 import auth from '../../../../Auth.js';
-import { cli } from '../../../../cli/cli.js';
-import { CommandInfo } from '../../../../cli/CommandInfo.js';
 import { Logger } from '../../../../cli/Logger.js';
 import { CommandError } from '../../../../Command.js';
 import request from '../../../../request.js';
@@ -35,10 +34,12 @@ describe(commands.LIST_WEBHOOK_LIST, () => {
       }
     ]
   };
+  const webUrl = 'https://contoso.sharepoint.com';
+  const listId = '0CD891EF-AFCE-4E55-B836-FCE03286CCCF';
   let log: any[];
   let logger: Logger;
   let loggerLogSpy: sinon.SinonSpy;
-  let commandInfo: CommandInfo;
+  let schema: z.ZodTypeAny;
 
   before(() => {
     sinon.stub(auth, 'restoreAuth').resolves();
@@ -46,7 +47,7 @@ describe(commands.LIST_WEBHOOK_LIST, () => {
     sinon.stub(pid, 'getProcessName').returns('');
     sinon.stub(session, 'getId').returns('');
     auth.connection.active = true;
-    commandInfo = cli.getCommandInfo(command);
+    schema = command.getSchemaToParse()!;
   });
 
   beforeEach(() => {
@@ -158,12 +159,23 @@ describe(commands.LIST_WEBHOOK_LIST, () => {
   });
 
   it('renders empty string for clientState, if no value for clientState was specified in the webhook', async () => {
+    const webhookWithoutClientState = {
+      value: [
+        {
+          expirationDateTime: '2019-01-27T16:32:05.4610008Z',
+          id: 'cc27a922-8224-4296-90a5-ebbc54da2e85',
+          notificationUrl: 'https://contoso-funcions.azurewebsites.net/webhook',
+          resource: 'dfddade1-4729-428d-881e-7fedf3cae50d'
+        }
+      ]
+    };
+
     sinon.stub(request, 'get').callsFake(async (opts) => {
       if ((opts.url as string).indexOf(`https://contoso.sharepoint.com/sites/ninja/_api/web/lists(guid'dfddade1-4729-428d-881e-7fedf3cae50d')/Subscriptions`) > -1) {
         if (opts.headers &&
           opts.headers.accept &&
           (opts.headers.accept as string).indexOf('application/json') === 0) {
-          return webhookListResponse;
+          return webhookWithoutClientState;
         }
       }
 
@@ -176,7 +188,13 @@ describe(commands.LIST_WEBHOOK_LIST, () => {
         webUrl: 'https://contoso.sharepoint.com/sites/ninja'
       }
     });
-    assert(loggerLogSpy.calledWith(webhookListResponse.value));
+    assert(loggerLogSpy.calledWith([{
+      clientState: '',
+      expirationDateTime: '2019-01-27T16:32:05.4610008Z',
+      id: 'cc27a922-8224-4296-90a5-ebbc54da2e85',
+      notificationUrl: 'https://contoso-funcions.azurewebsites.net/webhook',
+      resource: 'dfddade1-4729-428d-881e-7fedf3cae50d'
+    }]));
   });
 
   it('outputs user-friendly message when no webhooks found in verbose mode', async () => {
@@ -258,18 +276,33 @@ describe(commands.LIST_WEBHOOK_LIST, () => {
     }), new CommandError(err));
   });
 
-  it('fails validation if the listId option is not a valid GUID', async () => {
-    const actual = await command.validate({ options: { webUrl: 'https://contoso.sharepoint.com', listId: '12345' } }, commandInfo);
-    assert.notStrictEqual(actual, true);
+  it('passes validation when listId is provided', () => {
+    const actual = schema.safeParse({ webUrl, listId });
+    assert.strictEqual(actual.success, true);
   });
 
-  it('fails validation if the webUrl option is not a valid SharePoint url', async () => {
-    const actual = await command.validate({ options: { webUrl: 'notavalidurl', listId: '0CD891EF-AFCE-4E55-B836-FCE03286CCC' } }, commandInfo);
-    assert.notStrictEqual(actual, true);
+  it('passes validation when listTitle is provided', () => {
+    const actual = schema.safeParse({ webUrl, listTitle: 'Documents' });
+    assert.strictEqual(actual.success, true);
   });
 
-  it('passes validation if the listId option is a valid GUID', async () => {
-    const actual = await command.validate({ options: { webUrl: 'https://contoso.sharepoint.com', listId: '0CD891EF-AFCE-4E55-B836-FCE03286CCCF' } }, commandInfo);
-    assert(actual);
+  it('passes validation when listUrl is provided', () => {
+    const actual = schema.safeParse({ webUrl, listUrl: '/sites/ninja/lists/Documents' });
+    assert.strictEqual(actual.success, true);
+  });
+
+  it('fails validation when no list identifier is provided', () => {
+    const actual = schema.safeParse({ webUrl });
+    assert(actual.success === false && actual.error.issues.some(issue => issue.message.includes('Specify exactly one of listId, listTitle or listUrl.')));
+  });
+
+  it('fails validation when listId is not a GUID', () => {
+    const actual = schema.safeParse({ webUrl, listId: '12345' });
+    assert(actual.success === false && actual.error.issues.some(issue => issue.message.includes('not a valid GUID')));
+  });
+
+  it('fails validation when webUrl is not a valid SharePoint Online URL', () => {
+    const actual = schema.safeParse({ webUrl: 'notavalidurl', listId });
+    assert(actual.success === false && actual.error.issues.some(issue => issue.message.includes('SharePoint Online site URL')));
   });
 });
