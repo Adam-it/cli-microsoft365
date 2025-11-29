@@ -300,135 +300,131 @@ describe(commands.LIST_WEBHOOK_ADD, () => {
     } as any), new CommandError(errorMessage));
   });
 
-  describe('schema validation (json output)', () => {
-    it('fails validation when webUrl is not a SharePoint URL', () => {
-      const result = schema.safeParse({
-        webUrl: 'foo',
-        listTitle: 'Documents',
-        notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook'
-      });
-
-      assert.strictEqual(result.success, false);
-      if (!result.success) {
-        assert(result.error.issues.some(issue => issue.message.includes('valid SharePoint Online site URL')));
-      }
+  it('fails validation when webUrl is not a SharePoint URL', () => {
+    const result = schema.safeParse({
+      webUrl: 'foo',
+      listTitle: 'Documents',
+      notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook'
     });
 
-    it('fails validation when none of listId/listTitle/listUrl is provided', () => {
-      const result = schema.safeParse({
-        webUrl: 'https://contoso.sharepoint.com',
-        notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook'
-      });
-
-      assert.strictEqual(result.success, false);
-      if (!result.success) {
-        assert(result.error.issues.some(issue => issue.message.includes('Specify exactly one of listId, listTitle or listUrl')));
-      }
-    });
-
-    it('fails validation when multiple list identifiers are provided', () => {
-      const result = schema.safeParse({
-        webUrl: 'https://contoso.sharepoint.com',
-        listId: '0cd891ef-afce-4e55-b836-fce03286cccf',
-        listTitle: 'Documents',
-        notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook'
-      });
-
-      assert.strictEqual(result.success, false);
-      if (!result.success) {
-        assert(result.error.issues.some(issue => issue.message.includes('Specify exactly one of listId, listTitle or listUrl')));
-      }
-    });
-
-    it('passes validation when listTitle is provided with valid expiration', () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 10);
-      const result = schema.safeParse({
-        webUrl: 'https://contoso.sharepoint.com',
-        listTitle: 'Documents',
-        notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook',
-        expirationDateTime: futureDate.toISOString().substring(0, 10)
-      });
-
-      assert.strictEqual(result.success, true);
-    });
-
-    it('fails validation if listId is not a valid GUID', () => {
-      const result = schema.safeParse({
-        webUrl: 'https://contoso.sharepoint.com',
-        listId: '12345',
-        notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook'
-      });
-
-      assert.strictEqual(result.success, false);
-      if (!result.success) {
-        assert(result.error.issues.some(issue => issue.message.includes('is not a valid GUID')));
-      }
-    });
-
-    it('fails validation if expirationDateTime is not a valid date string', () => {
-      const result = schema.safeParse({
-        webUrl: 'https://contoso.sharepoint.com',
-        listTitle: 'Documents',
-        notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook',
-        expirationDateTime: '2018-X-09'
-      });
-
-      assert.strictEqual(result.success, false);
-      if (!result.success) {
-        assert(result.error.issues.some(issue => issue.message.includes('Provide an expiration date')));
-      }
-    });
-
-    it('fails validation if expirationDateTime is in the past', () => {
-      const pastDate = new Date();
-      pastDate.setMonth(pastDate.getMonth() - 1);
-      const past = pastDate.toISOString().substring(0, 10);
-      const result = schema.safeParse({
-        webUrl: 'https://contoso.sharepoint.com',
-        listTitle: 'Documents',
-        notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook',
-        expirationDateTime: past
-      });
-
-      assert.strictEqual(result.success, false);
-      if (!result.success) {
-        assert(result.error.issues.some(issue => issue.message.includes('future')));
-      }
-    });
-
-    it('fails validation if expirationDateTime is beyond the 6 month limit', () => {
-      const futureDate = new Date();
-      futureDate.setMonth(futureDate.getMonth() + 7);
-      const future = futureDate.toISOString().substring(0, 10);
-      const result = schema.safeParse({
-        webUrl: 'https://contoso.sharepoint.com',
-        listTitle: 'Documents',
-        notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook',
-        expirationDateTime: future
-      });
-
-      assert.strictEqual(result.success, false);
-      if (!result.success) {
-        assert(result.error.issues.some(issue => issue.message.includes('future')));
-      }
-    });
-  });
-  describe('schema validation (json fallback)', () => {
-    it('fails validation if expirationDateTime is not a valid date string (json output)', () => {
-      const result = schema.safeParse({
-        webUrl: 'https://contoso.sharepoint.com',
-        listTitle: 'Documents',
-        notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook',
-        expirationDateTime: '2018-X-09',
-        output: 'json'
-      });
-
-      assert.strictEqual(result.success, false);
-      if (!result.success) {
-        assert(result.error.issues.some(issue => issue.message.includes('Provide an expiration date')));
-      }
-    });
+    assert.strictEqual(result.success, false);
+    if (!result.success) {
+      assert(result.error.issues.some(issue => issue.message.includes('valid SharePoint Online site URL')));
+    }
   });
 
+  it('fails validation when none of listId/listTitle/listUrl is provided', () => {
+    const result = schema.safeParse({
+      webUrl: 'https://contoso.sharepoint.com',
+      notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook'
+    });
+
+    assert.strictEqual(result.success, false);
+    if (!result.success) {
+      assert(result.error.issues.some(issue => issue.message.includes('Specify exactly one of listId, listTitle or listUrl')));
+    }
+  });
+
+  it('fails validation when multiple list identifiers are provided', () => {
+    const result = schema.safeParse({
+      webUrl: 'https://contoso.sharepoint.com',
+      listId: '0cd891ef-afce-4e55-b836-fce03286cccf',
+      listTitle: 'Documents',
+      notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook'
+    });
+
+    assert.strictEqual(result.success, false);
+    if (!result.success) {
+      assert(result.error.issues.some(issue => issue.message.includes('Specify exactly one of listId, listTitle or listUrl')));
+    }
+  });
+
+  it('passes validation when listTitle is provided with valid expiration', () => {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 10);
+    const result = schema.safeParse({
+      webUrl: 'https://contoso.sharepoint.com',
+      listTitle: 'Documents',
+      notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook',
+      expirationDateTime: futureDate.toISOString().substring(0, 10)
+    });
+
+    assert.strictEqual(result.success, true);
+  });
+
+  it('fails validation if listId is not a valid GUID', () => {
+    const result = schema.safeParse({
+      webUrl: 'https://contoso.sharepoint.com',
+      listId: '12345',
+      notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook'
+    });
+
+    assert.strictEqual(result.success, false);
+    if (!result.success) {
+      assert(result.error.issues.some(issue => issue.message.includes('is not a valid GUID')));
+    }
+  });
+
+  it('fails validation if expirationDateTime is not a valid date string', () => {
+    const result = schema.safeParse({
+      webUrl: 'https://contoso.sharepoint.com',
+      listTitle: 'Documents',
+      notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook',
+      expirationDateTime: '2018-X-09'
+    });
+
+    assert.strictEqual(result.success, false);
+    if (!result.success) {
+      assert(result.error.issues.some(issue => issue.message.includes('Provide an expiration date')));
+    }
+  });
+
+  it('fails validation if expirationDateTime is in the past', () => {
+    const pastDate = new Date();
+    pastDate.setMonth(pastDate.getMonth() - 1);
+    const past = pastDate.toISOString().substring(0, 10);
+    const result = schema.safeParse({
+      webUrl: 'https://contoso.sharepoint.com',
+      listTitle: 'Documents',
+      notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook',
+      expirationDateTime: past
+    });
+
+    assert.strictEqual(result.success, false);
+    if (!result.success) {
+      assert(result.error.issues.some(issue => issue.message.includes('future')));
+    }
+  });
+
+  it('fails validation if expirationDateTime is beyond the 6 month limit', () => {
+    const futureDate = new Date();
+    futureDate.setMonth(futureDate.getMonth() + 7);
+    const future = futureDate.toISOString().substring(0, 10);
+    const result = schema.safeParse({
+      webUrl: 'https://contoso.sharepoint.com',
+      listTitle: 'Documents',
+      notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook',
+      expirationDateTime: future
+    });
+
+    assert.strictEqual(result.success, false);
+    if (!result.success) {
+      assert(result.error.issues.some(issue => issue.message.includes('future')));
+    }
+  });
+
+  it('fails validation if expirationDateTime is not a valid date string (json output)', () => {
+    const result = schema.safeParse({
+      webUrl: 'https://contoso.sharepoint.com',
+      listTitle: 'Documents',
+      notificationUrl: 'https://contoso-functions.azurewebsites.net/webhook',
+      expirationDateTime: '2018-X-09',
+      output: 'json'
+    });
+
+    assert.strictEqual(result.success, false);
+    if (!result.success) {
+      assert(result.error.issues.some(issue => issue.message.includes('Provide an expiration date')));
+    }
+  });
 });
