@@ -57,7 +57,7 @@ class Request {
           const properties: string[] = ['status', 'statusText', 'headers'];
           this._logger.logToStderr('Request error:');
           this._logger.logToStderr(JSON.stringify({
-            url: error.config.url,
+            url: error.config?.url ?? '',
             ...formatting.filterObject(error.response, properties),
             error: (error as any).error
           }, null, 2));
