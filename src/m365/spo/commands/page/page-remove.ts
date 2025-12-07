@@ -2,7 +2,7 @@ import { Cli } from '../../../../cli/Cli';
 import { Logger } from '../../../../cli/Logger';
 import GlobalOptions from '../../../../GlobalOptions';
 import request, { CliRequestOptions } from '../../../../request';
-import { spo } from '../../../../utils/spo';
+import { formatting } from '../../../../utils/formatting';
 import { urlUtil } from '../../../../utils/urlUtil';
 import { validation } from '../../../../utils/validation';
 import SpoCommand from '../../../base/SpoCommand';
@@ -15,6 +15,8 @@ interface CommandArgs {
 interface Options extends GlobalOptions {
   name: string;
   webUrl: string;
+  recycle?: boolean;
+  bypassSharedLock?: boolean;
   force?: boolean;
 }
 
@@ -30,17 +32,35 @@ class SpoPageRemoveCommand extends SpoCommand {
   constructor() {
     super();
 
+    this.#initTelemetry();
     this.#initOptions();
     this.#initValidators();
+    this.#initTypes();
+  }
+
+  #initTelemetry(): void {
+    this.telemetry.push((args: CommandArgs) => {
+      Object.assign(this.telemetryProperties, {
+        force: !!args.options.force,
+        recycle: !!args.options.recycle,
+        bypassSharedLock: !!args.options.bypassSharedLock
+      });
+    });
   }
 
   #initOptions(): void {
     this.options.unshift(
       {
+        option: '-u, --webUrl <webUrl>'
+      },
+      {
         option: '-n, --name <name>'
       },
       {
-        option: '-u, --webUrl <webUrl>'
+        option: '--recycle'
+      },
+      {
+        option: '--bypassSharedLock'
       },
       {
         option: '-f, --force'
@@ -52,6 +72,11 @@ class SpoPageRemoveCommand extends SpoCommand {
     this.validators.push(
       async (args: CommandArgs) => validation.isValidSharePointUrl(args.options.webUrl)
     );
+  }
+
+  #initTypes(): void {
+    this.types.string.push('name', 'webUrl');
+    this.types.boolean.push('force', 'bypassSharedLock', 'recycle');
   }
 
   public async commandAction(logger: Logger, args: CommandArgs): Promise<void> {
@@ -75,13 +100,9 @@ class SpoPageRemoveCommand extends SpoCommand {
 
   private async removePage(logger: Logger, args: CommandArgs): Promise<void> {
     try {
-      let requestDigest: string = '';
       let pageName: string = args.options.name;
 
-      const reqDigest = await spo.getRequestDigest(args.options.webUrl);
-      requestDigest = reqDigest.FormDigestValue;
-
-      if (!pageName.endsWith('.aspx')) {
+      if (!pageName.toLowerCase().endsWith('.aspx')) {
         pageName += '.aspx';
       }
 
@@ -89,19 +110,26 @@ class SpoPageRemoveCommand extends SpoCommand {
         logger.logToStderr(`Removing page ${pageName}...`);
       }
 
+      const filePath = `${urlUtil.getServerRelativeSiteUrl(args.options.webUrl)}/SitePages/${pageName}`;
       const requestOptions: CliRequestOptions = {
-        url: `${args.options
-          .webUrl}/_api/web/getfilebyserverrelativeurl('${urlUtil.getServerRelativeSiteUrl(args.options.webUrl)}/sitepages/${pageName}')`,
+        url: `${args.options.webUrl}/_api/web/GetFileByServerRelativePath(DecodedUrl='${formatting.encodeQueryParameter(filePath)}')`,
         headers: {
-          'X-RequestDigest': requestDigest,
-          'X-HTTP-Method': 'DELETE',
-          'content-type': 'application/json;odata=nometadata',
           accept: 'application/json;odata=nometadata'
         },
         responseType: 'json'
       };
 
-      await request.post(requestOptions);
+      if (args.options.bypassSharedLock) {
+        requestOptions.headers!.Prefer = 'bypass-shared-lock';
+      }
+      if (args.options.recycle) {
+        requestOptions.url += '/Recycle';
+
+        await request.post(requestOptions);
+      }
+      else {
+        await request.delete(requestOptions);
+      }
     }
     catch (err: any) {
       this.handleRejectedODataJsonPromise(err);

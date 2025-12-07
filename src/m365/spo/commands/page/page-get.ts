@@ -1,6 +1,6 @@
 import { Logger } from '../../../../cli/Logger';
 import GlobalOptions from '../../../../GlobalOptions';
-import request from '../../../../request';
+import request, { CliRequestOptions } from '../../../../request';
 import { formatting } from '../../../../utils/formatting';
 import { urlUtil } from '../../../../utils/urlUtil';
 import { validation } from '../../../../utils/validation';
@@ -15,6 +15,7 @@ interface Options extends GlobalOptions {
   name: string;
   webUrl: string;
   metadataOnly?: boolean;
+  default?: boolean;
 }
 
 class SpoPageGetCommand extends SpoCommand {
@@ -47,6 +48,9 @@ class SpoPageGetCommand extends SpoCommand {
       },
       {
         option: '--metadataOnly'
+      },
+      {
+        option: '--default'
       }
     );
   }
@@ -62,14 +66,28 @@ class SpoPageGetCommand extends SpoCommand {
       logger.logToStderr(`Retrieving information about the page...`);
     }
 
-    let pageName: string = args.options.name;
-    if (args.options.name.indexOf('.aspx') < 0) {
-      pageName += '.aspx';
-    }
-
+    let pageName: string = '';
     try {
-      let requestOptions: any = {
-        url: `${args.options.webUrl}/_api/web/getfilebyserverrelativeurl('${urlUtil.getServerRelativeSiteUrl(args.options.webUrl)}/SitePages/${formatting.encodeQueryParameter(pageName)}')?$expand=ListItemAllFields/ClientSideApplicationId,ListItemAllFields/PageLayoutType,ListItemAllFields/CommentsDisabled`,
+      if (args.options.name) {
+        pageName = args.options.name.endsWith('.aspx')
+          ? args.options.name
+          : `${args.options.name}.aspx`;
+      }
+      else if (args.options.default) {
+        const requestOptions: CliRequestOptions = {
+          url: `${args.options.webUrl}/_api/Web/RootFolder?$select=WelcomePage`,
+          headers: {
+            accept: 'application/json;odata=nometadata'
+          },
+          responseType: 'json'
+        };
+
+        const { WelcomePage } = await request.get<{ WelcomePage: string }>(requestOptions);
+        pageName = WelcomePage.split('/').pop()!;
+      }
+
+      let requestOptions: CliRequestOptions = {
+        url: `${args.options.webUrl}/_api/web/GetFileByServerRelativePath(DecodedUrl='${urlUtil.getServerRelativeSiteUrl(args.options.webUrl)}/SitePages/${formatting.encodeQueryParameter(pageName)}')?$expand=ListItemAllFields/ClientSideApplicationId,ListItemAllFields/PageLayoutType,ListItemAllFields/CommentsDisabled`,
         headers: {
           'content-type': 'application/json;charset=utf-8',
           accept: 'application/json;odata=nometadata'
@@ -80,7 +98,7 @@ class SpoPageGetCommand extends SpoCommand {
       const page = await request.get<any>(requestOptions);
 
       if (page.ListItemAllFields.ClientSideApplicationId !== 'b6917cb1-93a0-4b97-a84d-7cf49975d4ec') {
-        throw `Page ${args.options.name} is not a modern page.`;
+        throw `Page ${pageName} is not a modern page.`;
       }
 
       let pageItemData: any = {};
