@@ -889,6 +889,33 @@ describe(commands.DOCTOR, () => {
     assert(loggerLogSpy.calledWith(getStatus(0, 'gulp-cli v2.3.0')));
   });
 
+  it('skips gulp-cli check when gulp-cli not required', async () => {
+    sandbox = sinon.createSandbox();
+    sandbox.stub(process, 'version').value('v10.18.0');
+
+    sinon.stub(child_process, 'exec').callsFake((file, callback: any) => {
+      const packageName: string = file.split(' ')[2];
+      switch (packageName) {
+        case '@microsoft/sp-core-library':
+          callback(null, packageVersionResponse(packageName, '1.10.0'), '');
+          break;
+        default:
+          callback(new Error(`${file} ENOENT`), '', '');
+      }
+      return {} as child_process.ChildProcess;
+    });
+    let getPackageVersionSpy;
+    try {
+      getPackageVersionSpy = sinon.spy(command as any, 'getPackageVersion');
+
+      await command.action(logger, { options: { spfxVersion: '1.22.0' } });
+      assert(getPackageVersionSpy.neverCalledWith('gulp-cli'));
+    }
+    finally {
+      sinonUtil.restore(getPackageVersionSpy);
+    }
+  });
+
   it('fails gulp-cli check when gulp-cli not found', async () => {
     const sandbox = sinon.createSandbox();
     sandbox.stub(process, 'version').value('v10.18.0');
@@ -908,6 +935,148 @@ describe(commands.DOCTOR, () => {
     await command.action(logger, { options: {} });
     assert(loggerLogSpy.calledWith(getStatus(1, 'gulp-cli not found')));
     assert(loggerLogSpy.calledWith('- npm i -g gulp-cli@2'), 'No fix provided');
+  });
+
+  it('passes heft check when heft found', async () => {
+    sandbox = sinon.createSandbox();
+    sandbox.stub(process, 'version').value('v10.18.0');
+
+    sinon.stub(child_process, 'exec').callsFake((file, callback: any) => {
+      const packageName: string = file.split(' ')[2];
+      switch (packageName) {
+        case '@microsoft/sp-core-library':
+          callback(null, packageVersionResponse(packageName, '1.22.0'), '');
+          break;
+        case '@rushstack/heft':
+          callback(undefined, packageVersionResponse(packageName, '1.1.17'));
+          break;
+        default:
+          callback(new Error(`${file} ENOENT`), '', '');
+      }
+      return {} as child_process.ChildProcess;
+    });
+
+    await command.action(logger, { options: {} });
+    assert(loggerLogSpy.calledWith(getStatus(0, '@rushstack/heft v1.1.17')));
+  });
+
+  it('skips heft check when heft not required', async () => {
+    sandbox = sinon.createSandbox();
+    sandbox.stub(process, 'version').value('v10.18.0');
+
+    sinon.stub(child_process, 'exec').callsFake((file, callback: any) => {
+      const packageName: string = file.split(' ')[2];
+      switch (packageName) {
+        case '@microsoft/sp-core-library':
+          callback(null, packageVersionResponse(packageName, '1.10.0'), '');
+          break;
+        default:
+          callback(new Error(`${file} ENOENT`), '', '');
+      }
+      return {} as child_process.ChildProcess;
+    });
+    let getPackageVersionSpy;
+    try {
+      getPackageVersionSpy = sinon.spy(command as any, 'getPackageVersion');
+
+      await command.action(logger, { options: { spfxVersion: '1.10.0' } });
+      assert(getPackageVersionSpy.neverCalledWith('@rushstack/heft'));
+    }
+    finally {
+      sinonUtil.restore(getPackageVersionSpy);
+    }
+  });
+
+  it('fails heft check when heft not found', async () => {
+    sandbox = sinon.createSandbox();
+    sandbox.stub(process, 'version').value('v10.18.0');
+
+    sinon.stub(child_process, 'exec').callsFake((file, callback: any) => {
+      const packageName: string = file.split(' ')[2];
+      switch (packageName) {
+        case '@microsoft/sp-core-library':
+          callback(null, packageVersionResponse(packageName, '1.22.0'), '');
+          break;
+        default:
+          callback(new Error(`${file} ENOENT`), '', '');
+      }
+      return {} as child_process.ChildProcess;
+    });
+
+    await command.action(logger, { options: {} });
+    assert(loggerLogSpy.calledWith(getStatus(1, '@rushstack/heft not found')));
+    assert(loggerLogSpy.calledWith('- npm i -g @rushstack/heft@1'), 'No fix provided');
+  });
+
+  it('passes heft check when heft found', async () => {
+    sandbox = sinon.createSandbox();
+    sandbox.stub(process, 'version').value('v10.18.0');
+
+    sinon.stub(child_process, 'exec').callsFake((file, callback: any) => {
+      const packageName: string = file.split(' ')[2];
+      switch (packageName) {
+        case '@microsoft/sp-core-library':
+          callback(null, packageVersionResponse(packageName, '1.22.0'), '');
+          break;
+        case '@rushstack/heft':
+          callback(undefined, packageVersionResponse(packageName, '1.1.17'));
+          break;
+        default:
+          callback(new Error(`${file} ENOENT`), '', '');
+      }
+      return {} as child_process.ChildProcess;
+    });
+
+    await command.action(logger, { options: {} });
+    assert(loggerLogSpy.calledWith(getStatus(0, '@rushstack/heft v1.1.17')));
+  });
+
+  it('skips heft check when heft not required', async () => {
+    sandbox = sinon.createSandbox();
+    sandbox.stub(process, 'version').value('v10.18.0');
+
+    sinon.stub(child_process, 'exec').callsFake((file, callback: any) => {
+      const packageName: string = file.split(' ')[2];
+      switch (packageName) {
+        case '@microsoft/sp-core-library':
+          callback(null, packageVersionResponse(packageName, '1.10.0'), '');
+          break;
+        default:
+          callback(new Error(`${file} ENOENT`), '', '');
+      }
+      return {} as child_process.ChildProcess;
+    });
+    let getPackageVersionSpy;
+    try {
+      getPackageVersionSpy = sinon.spy(command as any, 'getPackageVersion');
+
+      await command.action(logger, { options: { spfxVersion: '1.10.0' } });
+      assert(getPackageVersionSpy.neverCalledWith('@rushstack/heft'));
+    }
+    finally {
+      sinonUtil.restore(getPackageVersionSpy);
+    }
+  });
+
+  it('fails heft check when heft not found', async () => {
+    sandbox = sinon.createSandbox();
+    sandbox.stub(process, 'version').value('v10.18.0');
+
+    sinon.stub(child_process, 'exec').callsFake((file, callback: any) => {
+      const packageName: string = file.split(' ')[2];
+      switch (packageName) {
+        case '@microsoft/sp-core-library':
+          callback(null, packageVersionResponse(packageName, '1.22.0'), '');
+          break;
+        default:
+          callback(new Error(`${file} ENOENT`), '', '');
+      }
+      return {} as child_process.ChildProcess;
+    });
+
+    await command.action(logger, { options: {} });
+    assert(loggerLogSpy.calledWith(getStatus(1, '@rushstack/heft not found')));
+    assert(loggerLogSpy.calledWith('- npm i -g @rushstack/heft@1'), 'No fix provided');
   });
 
   it('fails gulp check when gulp is found', async () => {

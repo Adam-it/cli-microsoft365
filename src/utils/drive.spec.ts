@@ -1,8 +1,8 @@
 import * as assert from 'assert';
 import * as sinon from 'sinon';
 import { Logger } from '../cli/Logger.js';
-import { sinonUtil } from "./sinonUtil.js";
-import request from "../request.js";
+import { sinonUtil } from "./sinonUtil";
+import request from "../request";
 import { Drive } from '@microsoft/microsoft-graph-types';
 import { drive } from './drive.js';
 

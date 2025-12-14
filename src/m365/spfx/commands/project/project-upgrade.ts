@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 // uncomment to support upgrading to preview releases
-// import { prerelease } from 'semver';
+// // import { prerelease } from 'semver';
 import { Logger } from '../../../../cli/Logger';
 import { CommandError } from '../../../../Command';
 import GlobalOptions from '../../../../GlobalOptions';
@@ -83,7 +83,9 @@ class SpfxProjectUpgradeCommand extends BaseProjectCommand {
     '1.19.0',
     '1.20.0',
     '1.21.0',
-    '1.21.1'
+    '1.21.1',
+    '1.22.0',
+    '1.22.1'
   ];
 
   public static ERROR_NO_PROJECT_ROOT_FOLDER: number = 1;
