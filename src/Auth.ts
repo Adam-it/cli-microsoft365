@@ -178,12 +178,13 @@ export class Auth {
       return accessToken.accessToken;
     }
     else {
-      if (!accessToken) {
-        logger.logToStderr(`No token found for resource ${resource}`);
-      }
-      else {
-        logger.logToStderr('Access token expired.');
-        throw 'Access token expired';
+      if (debug) {
+        if (!accessToken) {
+          logger.logToStderr(`No token found for resource ${resource}.`);
+        }
+        else {
+          logger.logToStderr(`Access token expired. Token: ${accessToken.accessToken}, ExpiresAt: ${accessToken.expiresOn}`);
+        }
       }
     }
 
