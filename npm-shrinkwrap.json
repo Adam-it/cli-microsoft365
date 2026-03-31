@@ -17,7 +17,7 @@
         "adaptivecards-templating": "^2.3.1",
         "adm-zip": "^0.5.10",
         "applicationinsights": "^2.9.8",
-        "axios": "^0.30.2",
+        "axios": "0.30.2",
         "chalk": "^4.1.2",
         "clipboardy": "^2.3.0",
         "csv-stringify": "^6.4.0",
