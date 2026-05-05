@@ -11,6 +11,7 @@ import { AzureDevOpsPipeline, AzureDevOpsPipelineStep } from './project-azuredev
 import GlobalOptions from '../../../../GlobalOptions';
 import { versions } from '../SpfxCompatibilityMatrix';
 import { spfx } from '../../../../utils/spfx';
+import { Project } from './project-model/index';
 
 interface CommandArgs {
   options: Options;
@@ -116,10 +117,6 @@ class SpfxProjectAzureDevOpsPipelineAddCommand extends BaseProjectCommand {
       throw new CommandError(`Couldn't find project root folder`, SpfxProjectAzureDevOpsPipelineAddCommand.ERROR_NO_PROJECT_ROOT_FOLDER);
     }
 
-    const solutionPackageJsonFile: string = path.join(this.projectRootPath, 'package.json');
-    const packageJson: string = fs.readFileSync(solutionPackageJsonFile, 'utf-8');
-    const solutionName = JSON.parse(packageJson).name;
-
     if (this.debug) {
       logger.logToStderr(`Adding Azure DevOps pipeline in the current SPFx project`);
     }
@@ -128,7 +125,12 @@ class SpfxProjectAzureDevOpsPipelineAddCommand extends BaseProjectCommand {
       delete require.cache[require.resolve('./DeployWorkflow')];
       const deployWorkflow = require('./DeployWorkflow');
       const pipeline: AzureDevOpsPipeline = deployWorkflow.pipeline;
-      this.updatePipeline(solutionName, pipeline, args.options);
+      const project: Project = { path: this.projectRootPath };
+      this.readAndParseJsonFile(path.join(this.projectRootPath, 'config', 'package-solution.json'), project, 'packageSolutionJson');
+
+      const sppkgPath = (project.packageSolutionJson as any)?.paths?.zippedPackage;
+
+      this.updatePipeline(sppkgPath, pipeline, args.options);
       this.savePipeline(pipeline);
     }
     catch (error: any) {
@@ -147,7 +149,7 @@ class SpfxProjectAzureDevOpsPipelineAddCommand extends BaseProjectCommand {
     fs.writeFileSync(path.resolve(pipelineFile), yaml.stringify(pipeline), 'utf-8');
   }
 
-  private updatePipeline(solutionName: string, pipeline: AzureDevOpsPipeline, options: GlobalOptions): void {
+  private updatePipeline(sppkgPath: string | undefined, pipeline: AzureDevOpsPipeline, options: GlobalOptions): void {
     if (options.name) {
       pipeline.name = options.name;
     }
@@ -197,17 +199,18 @@ class SpfxProjectAzureDevOpsPipelineAddCommand extends BaseProjectCommand {
 
       if (options.scope === 'sitecollection') {
         script.script = script.script.replace(`{{deploy}}`, `m365 spo app deploy --name '$(PackageName)' --appCatalogScope sitecollection --appCatalogUrl '$(SiteAppCatalogUrl)'`);
-        script.script = script.script.replace(`{{addApp}}`, `m365 spo app add --filePath '$(Build.SourcesDirectory)/sharepoint/solution/$(PackageName)' --appCatalogScope sitecollection --appCatalogUrl '$(SiteAppCatalogUrl)' --overwrite`);
+        script.script = script.script.replace(`{{addApp}}`, `m365 spo app add --filePath '$(Build.SourcesDirectory)/sharepoint/$(SppkgPath)' --appCatalogScope sitecollection --appCatalogUrl '$(SiteAppCatalogUrl)' --overwrite`);
         this.assignPipelineVariables(pipeline, 'SiteAppCatalogUrl', options.siteUrl);
       }
       else {
         script.script = script.script.replace(`{{deploy}}`, `m365 spo app deploy --name '$(PackageName)' --appCatalogScope 'tenant'`);
-        script.script = script.script.replace(`{{addApp}}`, `m365 spo app add --filePath '$(Build.SourcesDirectory)/sharepoint/solution/$(PackageName)' --overwrite`);
+        script.script = script.script.replace(`{{addApp}}`, `m365 spo app add --filePath '$(Build.SourcesDirectory)/sharepoint/$(SppkgPath)' --overwrite`);
         pipeline.variables = pipeline.variables.filter(v => v.name !== 'SiteAppCatalogUrl');
       }
 
-      if (solutionName) {
-        this.assignPipelineVariables(pipeline, 'PackageName', `${solutionName}.sppkg`);
+      if (sppkgPath) {
+        this.assignPipelineVariables(pipeline, 'SppkgPath', sppkgPath);
+        this.assignPipelineVariables(pipeline, 'PackageName', path.basename(sppkgPath));
       }
 
       if (options.skipFeatureDeployment) {

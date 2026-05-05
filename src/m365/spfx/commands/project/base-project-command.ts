@@ -263,4 +263,28 @@ export abstract class BaseProjectCommand extends AnonymousCommand {
 
     return undefined;
   }
+
+  protected readAndParseJsonFile(filePath: string, project: Project, keyPath: string): Project {
+    if (fs.existsSync(filePath)) {
+      try {
+        const source = formatting.removeSingleLineComments(fs.readFileSync(filePath, 'utf-8'));
+        const keys = keyPath.split('.') as (keyof Project)[];
+        let current: any = project;
+
+        for (let i = 0; i < keys.length - 1; i++) {
+          current = current[keys[i]];
+        }
+
+        const finalKey = keys[keys.length - 1];
+        current[finalKey] = JSON.parse(source);
+        if (typeof current[finalKey] === 'object' && current[finalKey] !== null) {
+          current[finalKey].source = source;
+        }
+      }
+      catch (error) {
+        throw new CommandError(`The file ${filePath} is not a valid JSON file or is not utf-8 encoded. Error: ${error}`);
+      }
+    }
+    return project;
+  }
 }
