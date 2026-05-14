@@ -27,6 +27,8 @@ describe(commands.PROJECT_UPGRADE, () => {
   let packagesDepExact: string[];
   let packagesDepUn: string[];
   let packagesDevUn: string[];
+  let packagesOverride: string[];
+  let packagesOverrideRemove: string[];
   let project141webPartNoLib: Project;
   const projectPath: string = './src/m365/spfx/commands/project/test-projects/spfx-141-webpart-nolib';
 
@@ -61,6 +63,8 @@ describe(commands.PROJECT_UPGRADE, () => {
     packagesDepExact = [];
     packagesDepUn = [];
     packagesDevUn = [];
+    packagesOverride = [];
+    packagesOverrideRemove = [];
   });
 
   afterEach(() => {
@@ -697,7 +701,7 @@ describe(commands.PROJECT_UPGRADE, () => {
   //#region npm
   it(`doesn't return any dependencies from command npm for npm package manager`, () => {
     packageManager.mapPackageManagerCommand({
-      command: 'npm', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packageMgr: 'npm'
+      command: 'npm', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packagesOverride, packagesOverrideRemove, packageMgr: 'npm'
     });
     assert.strictEqual(packagesDevExact.length, 0, 'Incorrect number of deps to install');
     assert.strictEqual(packagesDepExact.length, 0, 'Incorrect number of dev deps to install');
@@ -707,7 +711,7 @@ describe(commands.PROJECT_UPGRADE, () => {
 
   it(`returns 1 exact dependency to be installed for npm i -SE for npm package manager`, () => {
     packageManager.mapPackageManagerCommand({
-      command: 'npm i -SE package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packageMgr: 'npm'
+      command: 'npm i -SE package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packagesOverride, packagesOverrideRemove, packageMgr: 'npm'
     });
     assert.strictEqual(packagesDevExact.length, 0, 'Incorrect number of deps to install');
     assert.strictEqual(packagesDepExact.length, 1, 'Incorrect number of dev deps to install');
@@ -717,7 +721,7 @@ describe(commands.PROJECT_UPGRADE, () => {
 
   it(`returns 1 exact dev dependency to be installed for npm i -DE for npm package manager`, () => {
     packageManager.mapPackageManagerCommand({
-      command: 'npm i -DE package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packageMgr: 'npm'
+      command: 'npm i -DE package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packagesOverride, packagesOverrideRemove, packageMgr: 'npm'
     });
     assert.strictEqual(packagesDevExact.length, 1, 'Incorrect number of deps to install');
     assert.strictEqual(packagesDepExact.length, 0, 'Incorrect number of dev deps to install');
@@ -727,7 +731,7 @@ describe(commands.PROJECT_UPGRADE, () => {
 
   it(`returns 1 dependency to uninstall for npm un -S for npm package manager`, () => {
     packageManager.mapPackageManagerCommand({
-      command: 'npm un -S package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packageMgr: 'npm'
+      command: 'npm un -S package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packagesOverride, packagesOverrideRemove, packageMgr: 'npm'
     });
     assert.strictEqual(packagesDevExact.length, 0, 'Incorrect number of deps to install');
     assert.strictEqual(packagesDepExact.length, 0, 'Incorrect number of dev deps to install');
@@ -737,12 +741,28 @@ describe(commands.PROJECT_UPGRADE, () => {
 
   it(`returns 1 dev dependency to uninstall for npm un -D for npm package manager`, () => {
     packageManager.mapPackageManagerCommand({
-      command: 'npm un -D package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packageMgr: 'npm'
+      command: 'npm un -D package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packagesOverride, packagesOverrideRemove, packageMgr: 'npm'
     });
     assert.strictEqual(packagesDevExact.length, 0, 'Incorrect number of deps to install');
     assert.strictEqual(packagesDepExact.length, 0, 'Incorrect number of dev deps to install');
     assert.strictEqual(packagesDepUn.length, 0, 'Incorrect number of deps to uninstall');
     assert.strictEqual(packagesDevUn.length, 1, 'Incorrect number of dev deps to uninstall');
+  });
+
+  it(`returns 1 override to be set for npm pkg set for npm package manager`, () => {
+    packageManager.mapPackageManagerCommand({
+      command: 'npm pkg set overrides.package=1.0.0', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packagesOverride, packagesOverrideRemove, packageMgr: 'npm'
+    });
+    assert.strictEqual(packagesOverride.length, 1, 'Incorrect number of overrides to set');
+    assert.strictEqual(packagesOverrideRemove.length, 0, 'Incorrect number of overrides to remove');
+  });
+
+  it(`returns 1 override to be removed for npm pkg delete for npm package manager`, () => {
+    packageManager.mapPackageManagerCommand({
+      command: 'npm pkg delete overrides.package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packagesOverride, packagesOverrideRemove, packageMgr: 'npm'
+    });
+    assert.strictEqual(packagesOverride.length, 0, 'Incorrect number of overrides to set');
+    assert.strictEqual(packagesOverrideRemove.length, 1, 'Incorrect number of overrides to remove');
   });
 
   it(`returns command to install dependency for 1 dep for npm package manager`, () => {
@@ -751,6 +771,8 @@ describe(commands.PROJECT_UPGRADE, () => {
       packagesDevExact: [],
       packagesDepUn: [],
       packagesDevUn: [],
+      packagesOverride: [],
+      packagesOverrideRemove: [],
       packageMgr: 'npm'
     });
     assert.strictEqual(JSON.stringify(commands), JSON.stringify(['npm i -SE package']));
@@ -762,6 +784,8 @@ describe(commands.PROJECT_UPGRADE, () => {
       packagesDevExact: ['package'],
       packagesDepUn: [],
       packagesDevUn: [],
+      packagesOverride: [],
+      packagesOverrideRemove: [],
       packageMgr: 'npm'
     });
     assert.strictEqual(JSON.stringify(commands), JSON.stringify(['npm i -DE package']));
@@ -773,6 +797,8 @@ describe(commands.PROJECT_UPGRADE, () => {
       packagesDevExact: [],
       packagesDepUn: ['package'],
       packagesDevUn: [],
+      packagesOverride: [],
+      packagesOverrideRemove: [],
       packageMgr: 'npm'
     });
     assert.strictEqual(JSON.stringify(commands), JSON.stringify(['npm un -S package']));
@@ -784,9 +810,51 @@ describe(commands.PROJECT_UPGRADE, () => {
       packagesDevExact: [],
       packagesDepUn: [],
       packagesDevUn: ['package'],
+      packagesOverride: [],
+      packagesOverrideRemove: [],
       packageMgr: 'npm'
     });
     assert.strictEqual(JSON.stringify(commands), JSON.stringify(['npm un -D package']));
+  });
+
+  it(`returns command to set override for 1 override for npm package manager`, () => {
+    const commands: string[] = packageManager.reducePackageManagerCommand({
+      packagesDepExact: [],
+      packagesDevExact: [],
+      packagesDepUn: [],
+      packagesDevUn: [],
+      packagesOverride: ['overrides.package=1.0.0'],
+      packagesOverrideRemove: [],
+      packageMgr: 'npm'
+    });
+    assert.strictEqual(JSON.stringify(commands), JSON.stringify(['npm pkg set overrides.package=1.0.0']));
+  });
+
+  it(`returns command to remove override for 1 override for npm package manager`, () => {
+    const commands: string[] = packageManager.reducePackageManagerCommand({
+      packagesDepExact: [],
+      packagesDevExact: [],
+      packagesDepUn: [],
+      packagesDevUn: [],
+      packagesOverride: [],
+      packagesOverrideRemove: ['overrides.package'],
+      packageMgr: 'npm'
+    });
+    assert.strictEqual(JSON.stringify(commands), JSON.stringify(['npm pkg delete overrides.package']));
+  });
+
+  it(`returns override commands before install/uninstall commands for npm package manager`, () => {
+    const commands: string[] = packageManager.reducePackageManagerCommand({
+      packagesDepExact: ['dep-package'],
+      packagesDevExact: ['dev-package'],
+      packagesDepUn: ['un-package'],
+      packagesDevUn: ['dev-un-package'],
+      packagesOverride: ['overrides.package=1.0.0'],
+      packagesOverrideRemove: ['overrides.old-package'],
+      packageMgr: 'npm'
+    });
+    assert.strictEqual(commands[0], 'npm pkg delete overrides.old-package');
+    assert.strictEqual(commands[1], 'npm pkg set overrides.package=1.0.0');
   });
   //#endregion
 
@@ -794,7 +862,7 @@ describe(commands.PROJECT_UPGRADE, () => {
   it(`doesn't return any dependencies from command pnpm for pnpm package manager`, () => {
     (command as any).packageManager = 'pnpm';
     packageManager.mapPackageManagerCommand({
-      command: 'pnpm', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packageMgr: 'pnpm'
+      command: 'pnpm', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packagesOverride, packagesOverrideRemove, packageMgr: 'pnpm'
     });
     assert.strictEqual(packagesDevExact.length, 0, 'Incorrect number of deps to install');
     assert.strictEqual(packagesDepExact.length, 0, 'Incorrect number of dev deps to install');
@@ -805,7 +873,7 @@ describe(commands.PROJECT_UPGRADE, () => {
   it(`returns 1 exact dependency to be installed for pnpm i -E for pnpm package manager`, () => {
     (command as any).packageManager = 'pnpm';
     packageManager.mapPackageManagerCommand({
-      command: 'pnpm i -E package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packageMgr: 'pnpm'
+      command: 'pnpm i -E package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packagesOverride, packagesOverrideRemove, packageMgr: 'pnpm'
     });
     assert.strictEqual(packagesDevExact.length, 0, 'Incorrect number of deps to install');
     assert.strictEqual(packagesDepExact.length, 1, 'Incorrect number of dev deps to install');
@@ -816,7 +884,7 @@ describe(commands.PROJECT_UPGRADE, () => {
   it(`returns 1 exact dev dependency to be installed for pnpm i -DE for npm package manager`, () => {
     (command as any).packageManager = 'pnpm';
     packageManager.mapPackageManagerCommand({
-      command: 'pnpm i -DE package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packageMgr: 'pnpm'
+      command: 'pnpm i -DE package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packagesOverride, packagesOverrideRemove, packageMgr: 'pnpm'
     });
     assert.strictEqual(packagesDevExact.length, 1, 'Incorrect number of deps to install');
     assert.strictEqual(packagesDepExact.length, 0, 'Incorrect number of dev deps to install');
@@ -827,12 +895,30 @@ describe(commands.PROJECT_UPGRADE, () => {
   it(`returns 1 dev dependency to uninstall for pnpm un for npm package manager`, () => {
     (command as any).packageManager = 'pnpm';
     packageManager.mapPackageManagerCommand({
-      command: 'pnpm un package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packageMgr: 'pnpm'
+      command: 'pnpm un package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packagesOverride, packagesOverrideRemove, packageMgr: 'pnpm'
     });
     assert.strictEqual(packagesDevExact.length, 0, 'Incorrect number of deps to install');
     assert.strictEqual(packagesDepExact.length, 0, 'Incorrect number of dev deps to install');
     assert.strictEqual(packagesDepUn.length, 0, 'Incorrect number of deps to uninstall');
     assert.strictEqual(packagesDevUn.length, 1, 'Incorrect number of dev deps to uninstall');
+  });
+
+  it(`returns 1 override to be set for pnpm pkg set for pnpm package manager`, () => {
+    (command as any).packageManager = 'pnpm';
+    packageManager.mapPackageManagerCommand({
+      command: 'pnpm pkg set overrides.package=1.0.0', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packagesOverride, packagesOverrideRemove, packageMgr: 'pnpm'
+    });
+    assert.strictEqual(packagesOverride.length, 1, 'Incorrect number of overrides to set');
+    assert.strictEqual(packagesOverrideRemove.length, 0, 'Incorrect number of overrides to remove');
+  });
+
+  it(`returns 1 override to be removed for pnpm pkg delete for pnpm package manager`, () => {
+    (command as any).packageManager = 'pnpm';
+    packageManager.mapPackageManagerCommand({
+      command: 'pnpm pkg delete overrides.package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packagesOverride, packagesOverrideRemove, packageMgr: 'pnpm'
+    });
+    assert.strictEqual(packagesOverride.length, 0, 'Incorrect number of overrides to set');
+    assert.strictEqual(packagesOverrideRemove.length, 1, 'Incorrect number of overrides to remove');
   });
 
   it(`returns command to install dependency for 1 dep for pnpm package manager`, () => {
@@ -842,6 +928,8 @@ describe(commands.PROJECT_UPGRADE, () => {
       packagesDevExact: [],
       packagesDepUn: [],
       packagesDevUn: [],
+      packagesOverride: [],
+      packagesOverrideRemove: [],
       packageMgr: 'pnpm'
     });
     assert.strictEqual(JSON.stringify(commands), JSON.stringify(['pnpm i -E package']));
@@ -854,6 +942,8 @@ describe(commands.PROJECT_UPGRADE, () => {
       packagesDevExact: ['package'],
       packagesDepUn: [],
       packagesDevUn: [],
+      packagesOverride: [],
+      packagesOverrideRemove: [],
       packageMgr: 'pnpm'
     });
     assert.strictEqual(JSON.stringify(commands), JSON.stringify(['pnpm i -DE package']));
@@ -866,6 +956,8 @@ describe(commands.PROJECT_UPGRADE, () => {
       packagesDevExact: [],
       packagesDepUn: ['package'],
       packagesDevUn: [],
+      packagesOverride: [],
+      packagesOverrideRemove: [],
       packageMgr: 'pnpm'
     });
     assert.strictEqual(JSON.stringify(commands), JSON.stringify(['pnpm un package']));
@@ -878,103 +970,39 @@ describe(commands.PROJECT_UPGRADE, () => {
       packagesDevExact: [],
       packagesDepUn: [],
       packagesDevUn: ['package'],
+      packagesOverride: [],
+      packagesOverrideRemove: [],
       packageMgr: 'pnpm'
     });
     assert.strictEqual(JSON.stringify(commands), JSON.stringify(['pnpm un package']));
   });
-  //#endregion
 
-  //#region yarn
-  it(`doesn't return any dependencies from command yarn for yarn package manager`, () => {
-    (command as any).packageManager = 'yarn';
-    packageManager.mapPackageManagerCommand({
-      command: 'yarn', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packageMgr: 'yarn'
-    });
-    assert.strictEqual(packagesDevExact.length, 0, 'Incorrect number of deps to install');
-    assert.strictEqual(packagesDepExact.length, 0, 'Incorrect number of dev deps to install');
-    assert.strictEqual(packagesDepUn.length, 0, 'Incorrect number of deps to uninstall');
-    assert.strictEqual(packagesDevUn.length, 0, 'Incorrect number of dev deps to uninstall');
-  });
-
-  it(`returns 1 exact dependency to be installed for yarn add -E for pnpm package manager`, () => {
-    (command as any).packageManager = 'yarn';
-    packageManager.mapPackageManagerCommand({
-      command: 'yarn add -E package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packageMgr: 'yarn'
-    });
-    assert.strictEqual(packagesDevExact.length, 0, 'Incorrect number of deps to install');
-    assert.strictEqual(packagesDepExact.length, 1, 'Incorrect number of dev deps to install');
-    assert.strictEqual(packagesDepUn.length, 0, 'Incorrect number of deps to uninstall');
-    assert.strictEqual(packagesDevUn.length, 0, 'Incorrect number of dev deps to uninstall');
-  });
-
-  it(`returns 1 exact dev dependency to be installed for yarn add -DE for npm package manager`, () => {
-    (command as any).packageManager = 'yarn';
-    packageManager.mapPackageManagerCommand({
-      command: 'yarn add -DE package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packageMgr: 'yarn'
-    });
-    assert.strictEqual(packagesDevExact.length, 1, 'Incorrect number of deps to install');
-    assert.strictEqual(packagesDepExact.length, 0, 'Incorrect number of dev deps to install');
-    assert.strictEqual(packagesDepUn.length, 0, 'Incorrect number of deps to uninstall');
-    assert.strictEqual(packagesDevUn.length, 0, 'Incorrect number of dev deps to uninstall');
-  });
-
-  it(`returns 1 dev dependency to uninstall for yarn un for npm package manager`, () => {
-    (command as any).packageManager = 'yarn';
-    packageManager.mapPackageManagerCommand({
-      command: 'yarn remove package', packagesDevExact, packagesDepExact, packagesDepUn, packagesDevUn, packageMgr: 'yarn'
-    });
-    assert.strictEqual(packagesDevExact.length, 0, 'Incorrect number of deps to install');
-    assert.strictEqual(packagesDepExact.length, 0, 'Incorrect number of dev deps to install');
-    assert.strictEqual(packagesDepUn.length, 0, 'Incorrect number of deps to uninstall');
-    assert.strictEqual(packagesDevUn.length, 1, 'Incorrect number of dev deps to uninstall');
-  });
-
-  it(`returns command to install dependency for 1 dep for yarn package manager`, () => {
-    (command as any).packageManager = 'yarn';
-    const commands: string[] = packageManager.reducePackageManagerCommand({
-      packagesDepExact: ['package'],
-      packagesDevExact: [],
-      packagesDepUn: [],
-      packagesDevUn: [],
-      packageMgr: 'yarn'
-    });
-    assert.strictEqual(JSON.stringify(commands), JSON.stringify(['yarn add -E package']));
-  });
-
-  it(`returns command to install dev dependency for 1 dev dep for yarn package manager`, () => {
-    (command as any).packageManager = 'yarn';
-    const commands: string[] = packageManager.reducePackageManagerCommand({
-      packagesDepExact: [],
-      packagesDevExact: ['package'],
-      packagesDepUn: [],
-      packagesDevUn: [],
-      packageMgr: 'yarn'
-    });
-    assert.strictEqual(JSON.stringify(commands), JSON.stringify(['yarn add -DE package']));
-  });
-
-  it(`returns command to uninstall dependency for 1 dep for yarn package manager`, () => {
-    (command as any).packageManager = 'yarn';
-    const commands: string[] = packageManager.reducePackageManagerCommand({
-      packagesDepExact: [],
-      packagesDevExact: [],
-      packagesDepUn: ['package'],
-      packagesDevUn: [],
-      packageMgr: 'yarn'
-    });
-    assert.strictEqual(JSON.stringify(commands), JSON.stringify(['yarn remove package']));
-  });
-
-  it(`returns command to uninstall dev dependency for 1 dev dep for yarn package manager`, () => {
-    (command as any).packageManager = 'yarn';
+  it(`returns command to set override for 1 override for pnpm package manager`, () => {
+    (command as any).packageManager = 'pnpm';
     const commands: string[] = packageManager.reducePackageManagerCommand({
       packagesDepExact: [],
       packagesDevExact: [],
       packagesDepUn: [],
-      packagesDevUn: ['package'],
-      packageMgr: 'yarn'
+      packagesDevUn: [],
+      packagesOverride: ['overrides.package=1.0.0'],
+      packagesOverrideRemove: [],
+      packageMgr: 'pnpm'
     });
-    assert.strictEqual(JSON.stringify(commands), JSON.stringify(['yarn remove package']));
+    assert.strictEqual(JSON.stringify(commands), JSON.stringify(['pnpm pkg set overrides.package=1.0.0']));
+  });
+
+  it(`returns command to remove override for 1 override for pnpm package manager`, () => {
+    (command as any).packageManager = 'pnpm';
+    const commands: string[] = packageManager.reducePackageManagerCommand({
+      packagesDepExact: [],
+      packagesDevExact: [],
+      packagesDepUn: [],
+      packagesDevUn: [],
+      packagesOverride: [],
+      packagesOverrideRemove: ['overrides.package'],
+      packageMgr: 'pnpm'
+    });
+    assert.strictEqual(JSON.stringify(commands), JSON.stringify(['pnpm pkg delete overrides.package']));
   });
   //#endregion
 
@@ -984,6 +1012,8 @@ describe(commands.PROJECT_UPGRADE, () => {
       packagesDevExact: [],
       packagesDepUn: [],
       packagesDevUn: [],
+      packagesOverride: [],
+      packagesOverrideRemove: [],
       packageMgr: 'npm'
     });
     assert.strictEqual(JSON.stringify(commands), JSON.stringify([]));
@@ -997,6 +1027,29 @@ describe(commands.PROJECT_UPGRADE, () => {
       (command as any).supportedVersions.splice(1, 1);
       return JSON.stringify(err).indexOf("Cannot find module './project-upgrade/upgrade-0'") > -1;
     });
+  });
+
+  it('replaces removeOverride resolution token with the npm pkg delete command', async () => {
+    sinon.stub(command as any, 'getProjectRoot').returns(path.join(process.cwd(), 'src/m365/spfx/commands/project/test-projects/spfx-141-webpart-nolib'));
+
+    (command as any).allFindings.push({
+      id: 'FN027002_TEST',
+      title: 'Test remove override',
+      description: 'Remove override for test package',
+      severity: 'Required',
+      resolutionType: 'cmd',
+      supersedes: [],
+      occurrences: [{
+        file: './package.json',
+        resolution: 'removeOverride overrides.test-package',
+        position: { line: 1, character: 1 }
+      }]
+    });
+
+    await command.action(logger, { options: { toVersion: '1.5.0', output: 'json' } } as any);
+    const findings: FindingToReport[] = log[0];
+    const removeOverrideFinding = findings.find(f => f.id === 'FN027002_TEST');
+    assert.strictEqual(removeOverrideFinding!.resolution, 'npm pkg delete overrides.test-package');
   });
 
   //#region 1.0.0
@@ -3860,11 +3913,6 @@ describe(commands.PROJECT_UPGRADE, () => {
 
   it('passes validation when pnpm package manager specified', async () => {
     const actual = await command.validate({ options: { packageManager: 'pnpm' } }, commandInfo);
-    assert.strictEqual(actual, true);
-  });
-
-  it('passes validation when yarn package manager specified', async () => {
-    const actual = await command.validate({ options: { packageManager: 'yarn' } }, commandInfo);
     assert.strictEqual(actual, true);
   });
 
