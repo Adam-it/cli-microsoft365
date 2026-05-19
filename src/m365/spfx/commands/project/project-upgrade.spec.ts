@@ -827,7 +827,7 @@ describe(commands.PROJECT_UPGRADE, () => {
       packagesOverrideRemove: [],
       packageMgr: 'npm'
     });
-    assert.strictEqual(JSON.stringify(commands), JSON.stringify(['npm pkg set overrides.package=1.0.0']));
+    assert.strictEqual(JSON.stringify(commands), JSON.stringify(['npm pkg set overrides.package=1.0.0', 'npm i']));
   });
 
   it(`returns command to remove override for 1 override for npm package manager`, () => {
@@ -840,10 +840,10 @@ describe(commands.PROJECT_UPGRADE, () => {
       packagesOverrideRemove: ['overrides.package'],
       packageMgr: 'npm'
     });
-    assert.strictEqual(JSON.stringify(commands), JSON.stringify(['npm pkg delete overrides.package']));
+    assert.strictEqual(JSON.stringify(commands), JSON.stringify(['npm pkg delete overrides.package', 'npm i']));
   });
 
-  it(`returns override commands before install/uninstall commands for npm package manager`, () => {
+  it(`returns override commands after install/uninstall commands for npm package manager`, () => {
     const commands: string[] = packageManager.reducePackageManagerCommand({
       packagesDepExact: ['dep-package'],
       packagesDevExact: ['dev-package'],
@@ -854,7 +854,7 @@ describe(commands.PROJECT_UPGRADE, () => {
       packageMgr: 'npm'
     });
     assert.strictEqual(commands[0], 'npm pkg delete overrides.old-package');
-    assert.strictEqual(commands[1], 'npm pkg set overrides.package=1.0.0');
+    assert.strictEqual(commands[5], 'npm pkg set overrides.package=1.0.0');
   });
   //#endregion
 
@@ -988,7 +988,7 @@ describe(commands.PROJECT_UPGRADE, () => {
       packagesOverrideRemove: [],
       packageMgr: 'pnpm'
     });
-    assert.strictEqual(JSON.stringify(commands), JSON.stringify(['pnpm pkg set overrides.package=1.0.0']));
+    assert.strictEqual(JSON.stringify(commands), JSON.stringify(['pnpm pkg set overrides.package=1.0.0', 'pnpm i']));
   });
 
   it(`returns command to remove override for 1 override for pnpm package manager`, () => {
@@ -1002,7 +1002,7 @@ describe(commands.PROJECT_UPGRADE, () => {
       packagesOverrideRemove: ['overrides.package'],
       packageMgr: 'pnpm'
     });
-    assert.strictEqual(JSON.stringify(commands), JSON.stringify(['pnpm pkg delete overrides.package']));
+    assert.strictEqual(JSON.stringify(commands), JSON.stringify(['pnpm pkg delete overrides.package', 'pnpm i']));
   });
   //#endregion
 
@@ -3763,6 +3763,72 @@ describe(commands.PROJECT_UPGRADE, () => {
     await command.action(logger, { options: { toVersion: '1.22.2', preview: false, output: 'json' } } as any);
     const findings: FindingToReport[] = log[0];
     assert.strictEqual(findings.length, 22);
+  });
+  //#endregion
+
+  //#region 1.22.2
+  it('e2e: shows correct number of findings for upgrading ace 1.22.2 project to 1.23.0', async () => {
+    sinon.stub(command as any, 'getProjectRoot').callsFake(_ => path.join(process.cwd(), 'src/m365/spfx/commands/project/test-projects/spfx-1222-ace'));
+
+    await command.action(logger, { options: { toVersion: '1.23.0', preview: false, output: 'json' } } as any);
+    const findings: FindingToReport[] = log[0];
+    assert.strictEqual(findings.length, 20);
+  });
+
+  it('e2e: shows correct number of findings for upgrading application customizer 1.22.2 project to 1.23.0', async () => {
+    sinon.stub(command as any, 'getProjectRoot').callsFake(_ => path.join(process.cwd(), 'src/m365/spfx/commands/project/test-projects/spfx-1222-applicationcustomizer'));
+
+    await command.action(logger, { options: { toVersion: '1.23.0', preview: false, output: 'json' } } as any);
+    const findings: FindingToReport[] = log[0];
+    assert.strictEqual(findings.length, 21);
+  });
+
+  it('e2e: shows correct number of findings for upgrading field customizer react 1.22.2 project to 1.23.0', async () => {
+    sinon.stub(command as any, 'getProjectRoot').callsFake(_ => path.join(process.cwd(), 'src/m365/spfx/commands/project/test-projects/spfx-1222-fieldcustomizer-react'));
+
+    await command.action(logger, { options: { toVersion: '1.23.0', preview: false, output: 'json' } } as any);
+    const findings: FindingToReport[] = log[0];
+    assert.strictEqual(findings.length, 22);
+  });
+
+  it('e2e: shows correct number of findings for upgrading form customizer react 1.22.2 project to 1.23.0', async () => {
+    sinon.stub(command as any, 'getProjectRoot').callsFake(_ => path.join(process.cwd(), 'src/m365/spfx/commands/project/test-projects/spfx-1222-formcustomizer-react'));
+
+    await command.action(logger, { options: { toVersion: '1.23.0', preview: false, output: 'json' } } as any);
+    const findings: FindingToReport[] = log[0];
+    assert.strictEqual(findings.length, 24);
+  });
+
+  it('e2e: shows correct number of findings for upgrading list view command set 1.22.2 project to 1.23.0', async () => {
+    sinon.stub(command as any, 'getProjectRoot').callsFake(_ => path.join(process.cwd(), 'src/m365/spfx/commands/project/test-projects/spfx-1222-listviewcommandset'));
+
+    await command.action(logger, { options: { toVersion: '1.23.0', preview: false, output: 'json' } } as any);
+    const findings: FindingToReport[] = log[0];
+    assert.strictEqual(findings.length, 21);
+  });
+
+  it('e2e: shows correct number of findings for upgrading no framework web part 1.22.2 project to 1.23.0', async () => {
+    sinon.stub(command as any, 'getProjectRoot').callsFake(_ => path.join(process.cwd(), 'src/m365/spfx/commands/project/test-projects/spfx-1222-webpart-nolib'));
+
+    await command.action(logger, { options: { toVersion: '1.23.0', preview: false, output: 'json' } } as any);
+    const findings: FindingToReport[] = log[0];
+    assert.strictEqual(findings.length, 23);
+  });
+
+  it('e2e: shows correct number of findings for upgrading react web part 1.22.2 project to 1.23.0', async () => {
+    sinon.stub(command as any, 'getProjectRoot').callsFake(_ => path.join(process.cwd(), 'src/m365/spfx/commands/project/test-projects/spfx-1222-webpart-react'));
+
+    await command.action(logger, { options: { toVersion: '1.23.0', preview: false, output: 'json' } } as any);
+    const findings: FindingToReport[] = log[0];
+    assert.strictEqual(findings.length, 26);
+  });
+
+  it('e2e: shows correct number of findings for upgrading web part with optional dependencies 1.22.2 project to 1.23.0', async () => {
+    sinon.stub(command as any, 'getProjectRoot').callsFake(_ => path.join(process.cwd(), 'src/m365/spfx/commands/project/test-projects/spfx-1222-webpart-optionaldeps'));
+
+    await command.action(logger, { options: { toVersion: '1.23.0', preview: false, output: 'json' } } as any);
+    const findings: FindingToReport[] = log[0];
+    assert.strictEqual(findings.length, 32);
   });
   //#endregion
 

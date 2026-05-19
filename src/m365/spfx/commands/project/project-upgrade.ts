@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-// uncomment to support upgrading to preview releases
-// // import { prerelease } from 'semver';
+// Uncomment to support upgrading to preview releases
+// // // import { prerelease } from 'semver';
 import { Logger } from '../../../../cli/Logger';
 import { CommandError } from '../../../../Command';
 import GlobalOptions from '../../../../GlobalOptions';
@@ -86,7 +86,8 @@ class SpfxProjectUpgradeCommand extends BaseProjectCommand {
     '1.21.1',
     '1.22.0',
     '1.22.1',
-    '1.22.2'
+    '1.22.2',
+    '1.23.0'
   ];
 
   public static ERROR_NO_PROJECT_ROOT_FOLDER: number = 1;
@@ -186,7 +187,7 @@ class SpfxProjectUpgradeCommand extends BaseProjectCommand {
     }
 
     this.toVersion = args.options.toVersion ? args.options.toVersion : this.supportedVersions[this.supportedVersions.length - 1];
-    // uncomment to support upgrading to preview releases
+    // Uncomment to support upgrading to preview releases
     // if (!args.options.toVersion &&
     //   !args.options.preview &&
     //   prerelease(this.toVersion)) {
