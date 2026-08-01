@@ -65,7 +65,8 @@ describe('AuthServer', () => {
       assert(serverUrl.indexOf("http://localhost:") > -1);
 
       Axios.get<string>(`${serverUrl}/?code=1111`).then((response) => {
-        assert(response.data.indexOf("You have logged into CLI for Microsoft 365!") > -1);
+        assert(response.data.indexOf("Signed in to SPFx Toolkit") > -1);
+        assert(response.data.indexOf("You can close this window") > -1);
         assert(callbackResolveStub.called);
         assert(callbackResolveStub.args[0][0].code === "1111");
         assert(callbackResolveStub.args[0][0].redirectUri === serverUrl);
@@ -84,7 +85,7 @@ describe('AuthServer', () => {
   it('successfully returns error message only', (done) => {
     try {
       Axios.get<string>(`${serverUrl}/?error=an error has occurred`).then((response) => {
-        assert(response.data.indexOf("Oops! Azure Active Directory replied with an error message.") > -1);
+        assert(response.data.indexOf("Oops! Entra ID replied with an error message.") > -1);
         assert(callbackResolveStub.notCalled);
         assert(callbackRejectStub.called);
         assert(callbackRejectStub.args[0][0].error === "an error has occurred");
@@ -103,7 +104,7 @@ describe('AuthServer', () => {
   it('successfully returns error message and error description', (done) => {
     try {
       Axios.get<string>(`${serverUrl}/?error=an error has occurred&error_description=error description`).then((response) => {
-        assert(response.data.indexOf("Oops! Azure Active Directory replied with an error message.") > -1);
+        assert(response.data.indexOf("Oops! Entra ID replied with an error message.") > -1);
         assert(callbackResolveStub.notCalled);
         assert(callbackRejectStub.called);
         assert(callbackRejectStub.args[0][0].error === "an error has occurred");

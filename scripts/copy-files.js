@@ -38,3 +38,8 @@ const spfxPackageGenerateAssetsDir = 'dist/m365/spfx/commands/package/package-ge
 mkdirNotExistsSync(spfxPackageGenerateCmdDir);
 mkdirNotExistsSync(spfxPackageGenerateAssetsDir);
 getFilePaths(spfxPackageGenerateAssetsSourceDir).forEach(file => copyFile(file, spfxPackageGenerateAssetsSourceDir, spfxPackageGenerateAssetsDir));
+
+const rootAssetsSourceDir = 'src/assets';
+const rootAssetsDestinationDir = 'dist/assets';
+mkdirNotExistsSync(rootAssetsDestinationDir);
+getFilePaths(rootAssetsSourceDir).forEach(file => copyFile(file, rootAssetsSourceDir, rootAssetsDestinationDir));
