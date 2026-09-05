@@ -4,6 +4,7 @@ import { formatting } from '../../../../utils/formatting';
 import { fsUtil } from '../../../../utils/fsUtil';
 import AnonymousCommand from "../../../base/AnonymousCommand";
 import { Manifest, Project, ScssFile, TsFile } from "./project-model";
+import { CommandError } from '../../../../Command';
 
 export abstract class BaseProjectCommand extends AnonymousCommand {
   protected projectRootPath: string | null = null;

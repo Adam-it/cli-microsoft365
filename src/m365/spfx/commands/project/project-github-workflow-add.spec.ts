@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
+import * as yaml from 'yaml';
 import Command, { CommandError } from '../../../../Command';
 import { Cli } from '../../../../cli/Cli';
 import { CommandInfo } from '../../../../cli/CommandInfo';
@@ -12,6 +13,7 @@ import { sinonUtil } from '../../../../utils/sinonUtil';
 import commands from '../../commands';
 import sinon = require('sinon');
 import path = require('path');
+import { GitHubWorkflow } from './project-github-workflow-model';
 const command: Command = require('./project-github-workflow-add');
 
 describe(commands.PROJECT_GITHUB_WORKFLOW_ADD, () => {
@@ -178,6 +180,53 @@ describe(commands.PROJECT_GITHUB_WORKFLOW_ADD, () => {
 
     await command.action(logger, { options: { name: 'test', branchName: 'dev', manuallyTrigger: true, skipFeatureDeployment: true, overwrite: true, loginMethod: 'user', scope: 'sitecollection' } } as any);
     assert(writeFileSyncStub.calledWith(path.resolve(path.join(projectPath, '.github', 'workflows', 'deploy-spfx-solution.yml'))), 'workflow file not created');
+  });
+
+  it('uses npm run build and package for newer version of SPFx', async () => {
+    sinon.stub(command as any, 'getProjectRoot').returns(projectPath);
+
+    sinon.stub(fs, 'existsSync').callsFake((fakePath) => {
+      if (fakePath.toString() === path.join(projectPath, '.github')) {
+        return true;
+      }
+      else if (fakePath.toString() === path.join(projectPath, '.github', 'workflows')) {
+        return true;
+      }
+      else if (fakePath.toString() === path.join(projectPath, 'package.json')) {
+        return true;
+      }
+      else if (fakePath.toString() === path.join(projectPath, '.yo-rc.json')) {
+        return true;
+      }
+      else if (fakePath.toString() === path.join(projectPath, 'config', 'package-solution.json')) {
+        return true;
+      }
+
+      return false;
+    });
+
+    sinon.stub(fs, 'readFileSync').callsFake((filePath, options) => {
+      if (filePath.toString() === path.join(projectPath, 'package.json') && options === 'utf-8') {
+        return '{"name": "test"}';
+      }
+      else if (filePath.toString() === path.join(projectPath, '.yo-rc.json') && options === 'utf-8') {
+        return '{"@microsoft/generator-sharepoint": {"version": "1.22.0"}}';
+      }
+      else if (filePath.toString() === path.join(projectPath, 'config', 'package-solution.json') && options === 'utf-8') {
+        return '{"paths": {"zippedPackage": "solution/test.sppkg"}}';
+      }
+
+      throw `Invalid path: ${filePath}`;
+    });
+
+    const writeFileSyncStub: sinon.SinonStub = sinon.stub(fs, 'writeFileSync').returns();
+
+    await command.action(logger, { options: {} } as any);
+
+    assert(writeFileSyncStub.calledOnce, 'writeFileSync not called or called multiple times.');
+    const writtenWorkflow: GitHubWorkflow = yaml.parse(writeFileSyncStub.args[0][1] as string);
+    const buildStep = writtenWorkflow.jobs['build-and-deploy'].steps.find(step => step.name === 'Build & Package');
+    assert.strictEqual(buildStep?.run, 'npm run build', 'Build & Package step does not run npm run build');
   });
 
   it('handles error with unknown version of SPFx', async () => {
