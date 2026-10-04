@@ -162,7 +162,7 @@ export class Auth {
     }
   }
 
-  public async ensureAccessToken(resource: string, logger: Logger, debug: boolean = false, fetchNew: boolean = false): Promise<string> {
+  public async ensureAccessToken(resource: string, logger: Logger, debug: boolean = false, fetchNew: boolean = false, interactive: boolean = true): Promise<string> {
     const now: Date = new Date();
     const accessToken: AccessToken | undefined = this.service.accessTokens[resource];
     const expiresOn: Date = accessToken && accessToken.expiresOn ?
@@ -202,6 +202,18 @@ export class Auth {
           getTokenPromise = this.ensureAccessTokenSilent.bind(this);
         }
       }
+    }
+
+    // when the token can't be retrieved silently, auth types that require
+    // user interaction would prompt the user (eg. open the browser) which
+    // isn't allowed when the caller only wants to verify the connection
+    if (!getTokenPromise && !interactive &&
+      (this.service.authType === AuthType.DeviceCode || this.service.authType === AuthType.Browser)) {
+      if (debug) {
+        logger.logToStderr(`Retrieving a new access token requires user interaction which is not allowed.`);
+      }
+
+      throw new Error('Retrieving a new access token requires signing in again');
     }
 
     if (!getTokenPromise) {

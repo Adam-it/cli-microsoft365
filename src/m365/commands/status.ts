@@ -16,7 +16,8 @@ class StatusCommand extends Command {
   public async commandAction(logger: Logger): Promise<void> {
     if (auth.service.connected) {
       try {
-        await auth.ensureAccessToken(auth.defaultResource, logger, this.debug);
+        // status only verifies the connection so it must never prompt the user to sign in
+        await auth.ensureAccessToken(auth.defaultResource, logger, this.debug, false, false);
       }
       catch (err: any) {
         if (this.debug) {
