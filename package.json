@@ -22,6 +22,7 @@
   "type": "module",
   "scripts": {
     "build": "node node_modules/typescript-native/bin/tsc -p . && node scripts/write-all-commands.js && node scripts/copy-files.js",
+    "build:browser": "npm run build && node scripts/build-browser.js",
     "watch": "node scripts/watch.js",
     "clean": "rimraf ./dist",
     "test": "npm run test:version && npm run lint && npm run test:cov",
@@ -339,7 +340,9 @@
     "@types/yargs-parser": "^21.0.3",
     "@typescript-eslint/eslint-plugin": "^8.71.0",
     "@typescript-eslint/parser": "^8.58.0",
+    "buffer": "^6.0.3",
     "c8": "^12.0.0",
+    "esbuild": "^0.28.2",
     "eslint": "^10.12.0",
     "eslint-plugin-mocha": "^11.3.0",
     "globals": "^17.13.0",

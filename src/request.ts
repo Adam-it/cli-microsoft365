@@ -1,4 +1,4 @@
-import Axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import Axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { Stream } from 'stream';
 import auth, { Auth, CloudType } from './Auth.js';
 import { Logger } from './cli/Logger.js';
@@ -15,6 +15,7 @@ class Request {
   private req: AxiosInstance;
   private _logger?: Logger;
   private _debug: boolean = false;
+  private _debugInterceptorsSet: boolean = false;
 
   public set debug(debug: boolean) {
     // if the value to set is the same as current value return early to avoid
@@ -26,9 +27,12 @@ class Request {
 
     this._debug = debug;
 
-    if (this._debug) {
+    // the interceptors stay registered, so they're set once and check the
+    // current value. Matters when more commands run in the same process
+    if (this._debug && !this._debugInterceptorsSet) {
+      this._debugInterceptorsSet = true;
       this.req.interceptors.request.use(async config => {
-        if (this._logger) {
+        if (this._debug && this._logger) {
           await this._logger.logToStderr('Request:');
           const properties: string[] = ['url', 'method', 'headers', 'responseType', 'decompress'];
           if (config.responseType !== 'stream') {
@@ -42,7 +46,7 @@ class Request {
       // tests, so let's exclude it from coverage
       /* c8 ignore next 26 */
       this.req.interceptors.response.use(async (response: AxiosResponse): Promise<AxiosResponse> => {
-        if (this._logger) {
+        if (this._debug && this._logger) {
           await this._logger.logToStderr('Response:');
           const properties: string[] = ['status', 'statusText', 'headers'];
           if (response.headers['content-type'] &&
@@ -56,7 +60,7 @@ class Request {
         }
         return response;
       }, async (error: AxiosError): Promise<void> => {
-        if (this._logger) {
+        if (this._debug && this._logger) {
           const properties: string[] = ['status', 'statusText', 'headers'];
           await this._logger.logToStderr('Request error:');
           await this._logger.logToStderr(JSON.stringify({
@@ -120,6 +124,15 @@ class Request {
         throw error;
       }
     );
+  }
+
+  /**
+   * Registers a request interceptor on the underlying HTTP client. Used by
+   * hosts other than the Node CLI (eg. the browser host in src/browser) to
+   * adjust requests before they're sent.
+   */
+  public addRequestInterceptor(interceptor: (config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig>): number {
+    return this.req.interceptors.request.use(interceptor);
   }
 
   public post<TResponse>(options: CliRequestOptions): Promise<TResponse> {

@@ -1,5 +1,6 @@
 .circleci
 .nyc_output
+.browser-build
 .vscode
 .github
 .c8rc.json

@@ -1158,6 +1158,7 @@ export const cli = {
   executeCommandWithOutput,
   formatOutput,
   getCommandInfo,
+  getCommandOptionsFromArgs,
   getSettingWithDefaultValue,
   handleMultipleResultsFound,
   helpModes,

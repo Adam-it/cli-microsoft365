@@ -55,6 +55,9 @@ jspm_packages/
 .env
 
 dist
+# browser bundle (npm run build:browser)
+dist-browser
+.browser-build
 .DS_Store
 coverage
 # generated docs
