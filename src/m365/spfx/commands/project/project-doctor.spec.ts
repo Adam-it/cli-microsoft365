@@ -650,7 +650,7 @@ describe(commands.PROJECT_DOCTOR, () => {
   it('e2e: shows correct number of findings for a valid 1.24.2 project', async () => {
     sinon.stub(command as any, 'getProjectRoot').callsFake(_ => path.join(process.cwd(), 'src/m365/spfx/commands/project/test-projects/spfx-1242-webpart-react'));
 
-    await command.action(logger, { options: commandOptionsSchema.parse({}) });
+    await command.action(logger, { options: {} } as any);
     const findings: FindingToReport[] = log[0];
     assert.strictEqual(findings.length, 0);
   });
